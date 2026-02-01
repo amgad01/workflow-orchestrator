@@ -2,21 +2,38 @@ import asyncio
 import random
 
 from src.adapters.secondary.workers.base_worker import BaseWorker
+from src.domain.resilience.entities.circuit_breaker import CircuitBreaker
+from src.domain.resilience.exceptions.resilience_exceptions import CircuitOpenException
 from src.ports.secondary.message_broker import TaskMessage
-from src.shared.circuit_breaker import CircuitBreaker
 from src.shared.config import settings
 
 
 class ExternalServiceWorker(BaseWorker):
     def __init__(self):
-        self._circuit_breaker = CircuitBreaker(failure_threshold=3, recovery_timeout=10)
+        self._circuit_breaker = CircuitBreaker(
+            name="external_service",
+            failure_threshold=3,
+            reset_timeout_seconds=10,
+        )
 
     @property
     def handler_name(self) -> str:
         return "call_external_service"
 
     async def process(self, task: TaskMessage) -> dict:
-        return await self._circuit_breaker.call(self._do_process, task)
+        if not self._circuit_breaker.can_execute():
+            raise CircuitOpenException(
+                self._circuit_breaker.name,
+                self._circuit_breaker.reset_timeout_seconds,
+            )
+
+        try:
+            result = await self._do_process(task)
+            self._circuit_breaker.record_success()
+            return result
+        except Exception:
+            self._circuit_breaker.record_failure()
+            raise
 
     async def _do_process(self, task: TaskMessage) -> dict:
         # Simulate external service call with configurable delay

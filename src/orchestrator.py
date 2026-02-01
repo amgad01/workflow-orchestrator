@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import signal
 from uuid import uuid4
 
@@ -75,26 +76,30 @@ class OrchestratorRunner:
         # Start timeout checker
         timeout_task = asyncio.create_task(timeout_checker())
 
-        while not shutdown_event.is_set():
-            try:
-                completions = await self._broker.consume_completions(
-                    consumer_group=RedisMessageBroker.COMPLETION_GROUP,
-                    consumer_name=self._consumer_name,
-                    count=settings.ORCHESTRATOR_BATCH_SIZE,
-                    block_ms=settings.ORCHESTRATOR_BLOCK_MS,
-                )
+        try:
+            while not shutdown_event.is_set():
+                try:
+                    completions = await self._broker.consume_completions(
+                        consumer_group=RedisMessageBroker.COMPLETION_GROUP,
+                        consumer_name=self._consumer_name,
+                        count=settings.ORCHESTRATOR_BATCH_SIZE,
+                        block_ms=settings.ORCHESTRATOR_BLOCK_MS,
+                    )
 
-                if completions:
-                    # Parallel batch processing for high throughput
-                    await asyncio.gather(*[self.handle_completion(c) for c in completions])
+                    if completions:
+                        # Parallel batch processing for high throughput
+                        await asyncio.gather(*[self.handle_completion(c) for c in completions])
 
-            except Exception as e:
-                logger.error("orchestrator_main_loop_error", error=str(e), exc_info=True)
-                if not shutdown_event.is_set():
-                    await asyncio.sleep(1)
-        
-        await timeout_task
-        logger.info("orchestrator_shutdown_complete")
+                except Exception as e:
+                    logger.error("orchestrator_main_loop_error", error=str(e), exc_info=True)
+                    if not shutdown_event.is_set():
+                        await asyncio.sleep(1)
+        finally:
+            shutdown_event.set()
+            timeout_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await timeout_task
+            logger.info("orchestrator_shutdown_complete")
 
     async def handle_completion(self, completion: CompletionMessage) -> None:
         """
