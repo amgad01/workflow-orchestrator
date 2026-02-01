@@ -41,7 +41,8 @@ class OrchestrateUseCase:
         self._message_broker = message_broker
         self._metrics = metrics
 
-    async def _get_workflow_dag(self, workflow_id: str) -> DAG:
+    async def _get_workflow_dag(self, workflow_id: str) -> DAG | None:
+        """Retrieves DAG from cache or database with explicit None return type."""
         if workflow_id in self._dag_cache:
             return self._dag_cache[workflow_id]
 

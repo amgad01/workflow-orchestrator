@@ -19,7 +19,6 @@ async def health_check():
     }
     healthy = True
     
-    # Check Redis
     try:
         await redis_client.ping()
         dependencies["redis"] = "healthy"
@@ -28,7 +27,6 @@ async def health_check():
         dependencies["redis"] = "unhealthy"
         healthy = False
         
-    # Check Postgres
     try:
         async with engine.connect() as conn:
             await conn.execute(text("SELECT 1"))

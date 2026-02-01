@@ -47,7 +47,6 @@ class WorkerRunner:
         logger.info("worker_starting", consumer_name=self._consumer_name, delays_enabled=settings.WORKER_ENABLE_DELAYS)
         await self._broker.create_consumer_groups()
 
-        # Graceful shutdown setup
         loop = asyncio.get_running_loop()
         shutdown_event = asyncio.Event()
         
@@ -97,7 +96,6 @@ class WorkerRunner:
         bind_context({"execution_id": task.execution_id, "node_id": task.node_id})
         
         try:
-            # Idempotency check using Redis
             processed_key = f"execution:{task.execution_id}:processed_tasks"
             is_processed = await redis_client.sismember(processed_key, task.id)
             
@@ -169,7 +167,6 @@ class WorkerRunner:
 
             await self._broker.publish_completion(completion)
             
-            # Mark as processed and acknowledge
             await redis_client.sadd(processed_key, task.id)
             await redis_client.expire(processed_key, 86400)
             
@@ -179,10 +176,34 @@ class WorkerRunner:
             clear_context()
 
     async def _increment_retry_count(self, task: TaskMessage) -> int:
+        """Increment retry count and apply exponential backoff delay."""
         retry_key = f"task_retry:{task.execution_id}:{task.node_id}"
         retry_count = await redis_client.incr(retry_key)
         await redis_client.expire(retry_key, 86400)  # 24h TTL
+        
+        # Apply exponential backoff with jitter before retry
+        backoff_delay = self._calculate_backoff_delay(retry_count)
+        if backoff_delay > 0:
+            logger.info("applying_retry_backoff", delay_seconds=backoff_delay, retry_count=retry_count)
+            await asyncio.sleep(backoff_delay)
+        
         return retry_count
+
+    def _calculate_backoff_delay(self, retry_count: int) -> float:
+        """
+        Calculate exponential backoff delay with jitter.
+        
+        Formula: min(base * 2^retry_count, max_delay) + random_jitter
+        This prevents thundering herd when multiple tasks retry simultaneously.
+        """
+        import random
+        base_delay = 1.0  # 1 second base
+        max_delay = 30.0  # Cap at 30 seconds
+        
+        exponential_delay = min(base_delay * (2 ** (retry_count - 1)), max_delay)
+        jitter = random.uniform(0, exponential_delay * 0.1)  # 10% jitter
+        
+        return exponential_delay + jitter
 
     async def _move_to_dlq(self, task: TaskMessage, error: str, retry_count: int) -> None:
         entry = DeadLetterEntry(

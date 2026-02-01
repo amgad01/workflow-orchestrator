@@ -29,10 +29,8 @@ class ReaperRunner:
     async def run(self):
         logger.info(f"💀 Reaper started. Watching for tasks idle > {self._min_idle_ms}ms...")
         
-        # Ensure group exists (idempotent)
         await self._broker.create_consumer_groups()
 
-        # Graceful shutdown setup
         loop = asyncio.get_running_loop()
         shutdown_event = asyncio.Event()
 

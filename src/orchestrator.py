@@ -39,7 +39,6 @@ class OrchestratorRunner:
         logger.info("orchestrator_starting", consumer_name=self._consumer_name)
         await self._broker.create_consumer_groups()
 
-        # Graceful shutdown setup
         loop = asyncio.get_running_loop()
         shutdown_event = asyncio.Event()
 
@@ -71,9 +70,8 @@ class OrchestratorRunner:
                 except Exception as e:
                     logger.error("timeout_checker_error", error=str(e), exc_info=True)
                 
-                await asyncio.sleep(1) # Faster check for short timeouts
+                await asyncio.sleep(1)
 
-        # Start timeout checker
         timeout_task = asyncio.create_task(timeout_checker())
 
         try:
@@ -87,7 +85,6 @@ class OrchestratorRunner:
                     )
 
                     if completions:
-                        # Parallel batch processing for high throughput
                         await asyncio.gather(*[self.handle_completion(c) for c in completions])
 
                 except Exception as e:

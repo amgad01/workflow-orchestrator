@@ -13,7 +13,9 @@ from src.shared.logger import get_logger
 
 logger = get_logger(__name__)
 
-router = APIRouter(prefix="/admin/dlq", tags=["Admin - Dead Letter Queue"])
+# API versioning for forward compatibility
+API_VERSION = "v1"
+router = APIRouter(prefix=f"/api/{API_VERSION}/admin/dlq", tags=["Admin - Dead Letter Queue"])
 
 # Lazy helper for DLQ repo since it's not in standard dependencies yet
 def get_dlq_repository() -> RedisDLQRepository:

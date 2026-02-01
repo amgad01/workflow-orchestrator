@@ -24,7 +24,10 @@ from src.shared.metrics import metrics_registry
 from src.shared.logger import get_logger
 
 logger = get_logger(__name__)
-router = APIRouter(prefix="/workflow", tags=["Workflow"])
+
+# API versioning for forward compatibility
+API_VERSION = "v1"
+router = APIRouter(prefix=f"/api/{API_VERSION}/workflow", tags=["Workflow"])
 
 
 @router.post(
