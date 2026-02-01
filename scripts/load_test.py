@@ -24,18 +24,18 @@ async def run_workflow(client: httpx.AsyncClient, i: int, semaphore: asyncio.Sem
             }
             
             start = time.time()
-            resp = await client.post("/workflow", json=payload)
+            resp = await client.post("/api/v1/workflow", json=payload)
             resp.raise_for_status()
             
             exec_id = resp.json()["execution_id"]
             
             # Trigger
-            await client.post(f"/workflow/trigger/{exec_id}")
+            await client.post(f"/api/v1/workflow/trigger/{exec_id}")
             
             # Poll for completion with a timeout
             timeout_at = time.time() + 30
             while time.time() < timeout_at:
-                resp = await client.get(f"/workflows/{exec_id}")
+                resp = await client.get(f"/api/v1/workflow/{exec_id}")
                 if resp.status_code != 200:
                     return f"POLL_ERROR_{resp.status_code}", time.time() - start
                 
