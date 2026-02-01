@@ -186,9 +186,3 @@ src/
 ├── ports/            # Interface definitions (repository contracts)
 └── shared/           # Configuration, utilities, common infrastructure
 ```
-
----
-
-## License
-
-MIT
