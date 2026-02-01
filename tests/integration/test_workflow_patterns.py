@@ -102,7 +102,7 @@ class TestWorkflowPatterns:
                         ]
                     },
                 }
-                response = await ac.post("/workflow", json=dag)
+                response = await ac.post("/api/v1/workflow", json=dag)
 
                 assert response.status_code == 201
                 assert response.json()["execution_id"] == "exec-456"
@@ -139,7 +139,7 @@ class TestWorkflowPatterns:
                         ]
                     },
                 }
-                response = await ac.post("/workflow", json=dag)
+                response = await ac.post("/api/v1/workflow", json=dag)
 
                 assert response.status_code == 201
         finally:
@@ -173,7 +173,7 @@ class TestWorkflowPatterns:
                         ]
                     },
                 }
-                response = await ac.post("/workflow", json=dag)
+                response = await ac.post("/api/v1/workflow", json=dag)
 
                 assert response.status_code == 201
         finally:
@@ -198,7 +198,7 @@ class TestWorkflowPatterns:
 
         try:
             async with AsyncClient(transport=transport, base_url="http://test") as ac:
-                response = await ac.get("/workflow/exec-fail")
+                response = await ac.get("/api/v1/workflow/exec-fail")
 
                 assert response.status_code == 200
                 assert response.json()["status"] == "FAILED"

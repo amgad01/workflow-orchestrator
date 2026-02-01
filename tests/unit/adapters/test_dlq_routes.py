@@ -56,7 +56,7 @@ class TestDLQRoutes:
         mock_dlq_repository.count.return_value = 0
         
         client = TestClient(test_app)
-        response = client.get("/admin/dlq")
+        response = client.get("/api/v1/admin/dlq")
         
         assert response.status_code == 200
         data = response.json()
@@ -69,7 +69,7 @@ class TestDLQRoutes:
         mock_dlq_repository.count.return_value = 1
         
         client = TestClient(test_app)
-        response = client.get("/admin/dlq")
+        response = client.get("/api/v1/admin/dlq")
         
         assert response.status_code == 200
         data = response.json()
@@ -92,8 +92,7 @@ class TestDLQRoutes:
             mock_redis.delete.return_value = True
             
             client = TestClient(test_app)
-            response = client.post("/admin/dlq/entry-123/retry")
-        
+        response = client.post("/api/v1/admin/dlq/entry-123/retry")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -105,7 +104,7 @@ class TestDLQRoutes:
         mock_dlq_repository.pop.return_value = None
         
         client = TestClient(test_app)
-        response = client.post("/admin/dlq/nonexistent/retry")
+        response = client.post("/api/v1/admin/dlq/nonexistent/retry")
         
         assert response.status_code == 404
 
@@ -114,7 +113,7 @@ class TestDLQRoutes:
         mock_dlq_repository.delete.return_value = True
         
         client = TestClient(test_app)
-        response = client.delete("/admin/dlq/entry-123")
+        response = client.delete("/api/v1/admin/dlq/entry-123")
         
         assert response.status_code == 200
         data = response.json()
@@ -125,7 +124,7 @@ class TestDLQRoutes:
         mock_dlq_repository.delete.return_value = False
         
         client = TestClient(test_app)
-        response = client.delete("/admin/dlq/nonexistent")
+        response = client.delete("/api/v1/admin/dlq/nonexistent")
         
         assert response.status_code == 404
 

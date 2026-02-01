@@ -89,7 +89,7 @@ class TestWorkflowDagValidation:
                 ]
             },
         }
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 400
         data = response.json()
@@ -103,7 +103,7 @@ class TestWorkflowDagValidation:
                 "nodes": [{"id": "n1", "handler": "h1", "dependencies": ["nonexistent"]}]
             },
         }
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 400
         data = response.json()
@@ -112,7 +112,7 @@ class TestWorkflowDagValidation:
     async def test_rejects_empty_dag(self, client: AsyncClient):
         """Workflow with no nodes should be rejected with EMPTY_WORKFLOW error."""
         payload = {"name": "Empty Workflow", "dag": {"nodes": []}}
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 400
         assert response.json()["error"]["error_code"] == "EMPTY_WORKFLOW"
@@ -128,7 +128,7 @@ class TestWorkflowDagValidation:
                 ]
             },
         }
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 400
         assert response.json()["error"]["error_code"] == "DUPLICATE_NODE_ID"
@@ -148,7 +148,7 @@ class TestWorkflowDagValidation:
                 ]
             },
         }
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 201
 
@@ -175,5 +175,5 @@ class TestWorkflowDagValidation:
         ]
         payload = {"name": "Deep DAG", "dag": {"nodes": nodes}}
 
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
         assert response.status_code == 201

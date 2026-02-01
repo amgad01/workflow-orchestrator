@@ -76,7 +76,7 @@ class TestWorkflowApiErrors:
     async def test_returns_422_for_missing_required_fields(self, client: AsyncClient):
         """Missing required DAG field should return 422 Pydantic validation error."""
         payload = {"name": "No DAG"}
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 422 
 
@@ -91,7 +91,7 @@ class TestWorkflowApiErrors:
 
         mock_execute.side_effect = ExecutionNotFoundError("non-existent-id")
 
-        response = await client.get("/workflow/non-existent-id")
+        response = await client.get("/api/v1/workflow/non-existent-id")
 
         assert response.status_code == 404
         data = response.json()
@@ -108,7 +108,7 @@ class TestWorkflowApiErrors:
 
         mock_cancel.side_effect = ExecutionNotFoundError("unknown")
 
-        response = await client.delete("/workflow/unknown")
+        response = await client.delete("/api/v1/workflow/unknown")
 
         assert response.status_code == 404
         assert response.json()["error"]["error_code"] == "EXECUTION_NOT_FOUND"
@@ -130,6 +130,6 @@ class TestWorkflowApiErrors:
             "name": "Invalid Handler",
             "dag": {"nodes": [{"id": "n1", "handler": "invalid"}]},
         }
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 201

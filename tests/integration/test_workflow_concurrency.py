@@ -53,7 +53,7 @@ class TestWorkflowConcurrency:
                 "dag": {"nodes": [{"id": "n1", "handler": "h1"}]},
             }
 
-            tasks = [client.post("/workflow", json=payload) for _ in range(10)]
+            tasks = [client.post("/api/v1/workflow", json=payload) for _ in range(10)]
             responses = await asyncio.gather(*tasks)
 
             for resp in responses:
@@ -74,7 +74,7 @@ class TestWorkflowConcurrency:
                 "name": "Single Node",
                 "dag": {"nodes": [{"id": "only", "handler": "input"}]},
             }
-            response = await client.post("/workflow", json=payload)
+            response = await client.post("/api/v1/workflow", json=payload)
 
             assert response.status_code == 201
 
@@ -100,11 +100,11 @@ class TestWorkflowConcurrency:
                 "name": "Parallel Trigger Test",
                 "dag": {"nodes": [{"id": "n1", "handler": "h1"}]},
             }
-            submit_resp = await client.post("/workflow", json=payload)
+            submit_resp = await client.post("/api/v1/workflow", json=payload)
             execution_id = submit_resp.json()["execution_id"]
 
             trigger_tasks = [
-                client.post(f"/workflow/trigger/{execution_id}") for _ in range(5)
+                client.post(f"/api/v1/workflow/trigger/{execution_id}") for _ in range(5)
             ]
             responses = await asyncio.gather(*trigger_tasks)
 

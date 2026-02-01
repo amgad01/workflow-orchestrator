@@ -146,7 +146,7 @@ class TestRateLimiting:
             "name": "RL Test",
             "dag": {"nodes": [{"id": "n1", "handler": "h1"}]},
         }
-        response = await client.post("/workflow", json=payload)
+        response = await client.post("/api/v1/workflow", json=payload)
 
         assert response.status_code == 429
         assert "Retry-After" in response.headers
@@ -213,7 +213,7 @@ class TestDeadLetterQueue:
         self.mock_dlq_repo.list_entries.return_value = []
         self.mock_dlq_repo.count.return_value = 0
 
-        resp = await client.get("/admin/dlq")
+        resp = await client.get("/api/v1/admin/dlq")
 
         assert resp.status_code == 200
         assert resp.json()["count"] == 0
@@ -268,6 +268,6 @@ class TestCircuitBreaker:
                 ]
             },
         }
-        resp = await client.post("/workflow", json=payload)
+        resp = await client.post("/api/v1/workflow", json=payload)
 
         assert resp.status_code == 201
