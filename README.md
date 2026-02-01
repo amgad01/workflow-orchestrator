@@ -13,8 +13,8 @@ It demonstrates mastery of **Clean Architecture**, **Hexagonal (Ports & Adapters
 ### Quick Start
 1.  **Clone the repository**:
     ```bash
-    git clone <repository_url>
-    cd workflow-engine
+    git clone https://github.com/amgad01/workflow-orchestrator.git
+    cd workflow-orchestrator
     ```
 
 2.  **Start Services**:
@@ -157,6 +157,42 @@ poetry run pytest tests/domain/ -v        # Domain logic tests
 ```bash
 docker compose up -d
 poetry run pytest tests/e2e/ -v
+```
+
+You can also run E2E tests end-to-end with Docker using the helper script:
+```bash
+./scripts/run_e2e.sh
+```
+
+---
+
+## Local Development (without Docker)
+
+```bash
+poetry install
+poetry run uvicorn src.main:app --reload
+```
+
+In separate terminals:
+```bash
+poetry run python -m src.orchestrator
+poetry run python -m src.worker
+```
+
+---
+
+## Observability
+
+- **Logs**: `docker compose logs -f api orchestrator worker`
+- **Metrics**: Prometheus endpoint at `GET /metrics`
+
+---
+
+## Performance Notes
+
+Run the load-test harness against a running stack:
+```bash
+./scripts/run_load_test.sh http://localhost:8000
 ```
 
 ---
