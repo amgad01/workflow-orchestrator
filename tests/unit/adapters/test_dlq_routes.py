@@ -87,17 +87,19 @@ class TestDLQRoutes:
         mock_state_store.set_node_status.return_value = None
         
         # Need to patch redis_client.delete in DLQ routes
-        from unittest.mock import patch
-        with patch("src.adapters.primary.api.dlq_routes.redis_client") as mock_redis:
-            mock_redis.delete.return_value = True
-            
+        from unittest.mock import patch, AsyncMock
+        
+        mock_redis = AsyncMock()
+        mock_redis.delete = AsyncMock(return_value=True)
+        
+        with patch("src.adapters.primary.api.dlq_routes.redis_client", mock_redis):
             client = TestClient(test_app)
-        response = client.post("/api/v1/admin/dlq/entry-123/retry")
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "success"
-        assert data["task_id"] == "task-456"
-        mock_message_broker.publish_task.assert_called_once()
+            response = client.post("/api/v1/admin/dlq/entry-123/retry")
+            assert response.status_code == 200
+            data = response.json()
+            assert data["status"] == "success"
+            assert data["task_id"] == "task-456"
+            mock_message_broker.publish_task.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_retry_dlq_entry_not_found(self, mock_dlq_repository, test_app):

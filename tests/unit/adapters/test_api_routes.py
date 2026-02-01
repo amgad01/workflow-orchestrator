@@ -79,7 +79,7 @@ class TestApiRoutes:
         mock_submit.execute.return_value = ("wf-123", "exec-456")
         
         response = client.post(
-            "/workflow",
+            "/api/v1/workflow",
             json={
                 "name": "Test Workflow",
                 "dag": {"nodes": [{"id": "n1", "handler": "h1"}]}
@@ -98,7 +98,7 @@ class TestApiRoutes:
             "node_statuses": {"n1": "RUNNING"}
         }
         
-        response = client.get("/workflow/exec-456")
+        response = client.get("/api/v1/workflow/exec-456")
         
         assert response.status_code == 200
         assert response.json()["status"] == "RUNNING"
@@ -110,7 +110,7 @@ class TestApiRoutes:
             "outputs": {"n1": {"output": "data"}}
         }
         
-        response = client.get("/workflow/exec-456/results")
+        response = client.get("/api/v1/workflow/exec-456/results")
         
         assert response.status_code == 200
         assert response.json()["outputs"]["n1"]["output"] == "data"
@@ -123,7 +123,7 @@ class TestApiRoutes:
             "outputs": {"n1": {"output": "data"}}
         }
         
-        response = client.get("/workflows/exec-456/results")
+        response = client.get("/api/v1/workflow/exec-456/results")
         
         assert response.status_code == 200
         assert response.json()["outputs"]["n1"]["output"] == "data"
@@ -131,7 +131,7 @@ class TestApiRoutes:
     def test_cancel_workflow_success(self, client, mock_cancel):
         mock_cancel.execute.return_value = None
         
-        response = client.delete("/workflow/exec-456")
+        response = client.delete("/api/v1/workflow/exec-456")
         
         assert response.status_code == 200
         assert "cancelled" in response.json()["message"]
