@@ -1,0 +1,48 @@
+{
+    "name": "Conditional Branching Demo",
+    "dag": {
+        "nodes": [
+            {
+                "id": "start",
+                "handler": "input",
+                "dependencies": []
+            },
+            {
+                "id": "is_yes",
+                "handler": "decision",
+                "dependencies": [
+                    "start"
+                ],
+                "config": {
+                    "value_a": "{{ start.data }}",
+                    "operator": "==",
+                    "value_b": "yes"
+                }
+            },
+            {
+                "id": "true_branch",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "is_yes"
+                ],
+                "condition": "{{ is_yes.result }} == True",
+                "config": {
+                    "url": "http://mock.service/true",
+                    "method": "GET"
+                }
+            },
+            {
+                "id": "false_branch",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "is_yes"
+                ],
+                "condition": "{{ is_yes.result }} == False",
+                "config": {
+                    "url": "http://mock.service/false",
+                    "method": "GET"
+                }
+            }
+        ]
+    }
+}

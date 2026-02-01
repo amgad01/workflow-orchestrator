@@ -1,0 +1,94 @@
+{
+    "name": "Complex DAG with Multiple Dependencies",
+    "dag": {
+        "nodes": [
+            {
+                "id": "input",
+                "handler": "input",
+                "dependencies": [],
+                "config": {}
+            },
+            {
+                "id": "fetch_users",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "url": "https://api.example.com/users"
+                }
+            },
+            {
+                "id": "fetch_products",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "url": "https://api.example.com/products"
+                }
+            },
+            {
+                "id": "fetch_orders",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "url": "https://api.example.com/orders"
+                }
+            },
+            {
+                "id": "enrich_users",
+                "handler": "call_llm",
+                "dependencies": [
+                    "fetch_users"
+                ],
+                "config": {
+                    "prompt": "Enrich user data: {{ fetch_users.data }}"
+                }
+            },
+            {
+                "id": "match_products",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "fetch_products",
+                    "fetch_users"
+                ],
+                "config": {
+                    "url": "https://api.example.com/match"
+                }
+            },
+            {
+                "id": "analyze_orders",
+                "handler": "call_llm",
+                "dependencies": [
+                    "fetch_orders"
+                ],
+                "config": {
+                    "prompt": "Analyze orders: {{ fetch_orders.data }}"
+                }
+            },
+            {
+                "id": "combine_insights",
+                "handler": "call_llm",
+                "dependencies": [
+                    "enrich_users",
+                    "match_products",
+                    "analyze_orders"
+                ],
+                "config": {
+                    "prompt": "Combine all insights"
+                }
+            },
+            {
+                "id": "output",
+                "handler": "output",
+                "dependencies": [
+                    "combine_insights"
+                ],
+                "config": {}
+            }
+        ]
+    }
+}

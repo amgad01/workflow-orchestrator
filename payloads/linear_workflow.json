@@ -1,0 +1,33 @@
+{
+    "name": "Linear Workflow (A → B → C)",
+    "dag": {
+        "nodes": [
+            {
+                "id": "start",
+                "handler": "input",
+                "dependencies": [],
+                "config": {
+                    "message": "Starting linear workflow"
+                }
+            },
+            {
+                "id": "process",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "start"
+                ],
+                "config": {
+                    "url": "https://api.example.com/process"
+                }
+            },
+            {
+                "id": "finish",
+                "handler": "output",
+                "dependencies": [
+                    "process"
+                ],
+                "config": {}
+            }
+        ]
+    }
+}

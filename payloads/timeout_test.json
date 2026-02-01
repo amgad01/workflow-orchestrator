@@ -1,0 +1,16 @@
+{
+    "name": "Timeout Test",
+    "timeout_seconds": 2,
+    "dag": {
+        "nodes": [
+            {
+                "id": "slow_task",
+                "handler": "call_external_service",
+                "dependencies": [],
+                "config": {
+                    "url": "https://slow-api.example.com/wait"
+                }
+            }
+        ]
+    }
+}

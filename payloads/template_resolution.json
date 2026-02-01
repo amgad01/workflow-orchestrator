@@ -1,0 +1,49 @@
+{
+    "name": "Template Resolution Test",
+    "dag": {
+        "nodes": [
+            {
+                "id": "config_source",
+                "handler": "input",
+                "dependencies": [],
+                "config": {
+                    "api_key": "test-key-123",
+                    "base_url": "https://api.example.com"
+                }
+            },
+            {
+                "id": "fetch_data",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "config_source"
+                ],
+                "config": {
+                    "url": "{{ config_source.base_url }}/data",
+                    "headers": {
+                        "Authorization": "Bearer {{ config_source.api_key }}"
+                    }
+                }
+            },
+            {
+                "id": "process_data",
+                "handler": "call_llm",
+                "dependencies": [
+                    "fetch_data"
+                ],
+                "config": {
+                    "prompt": "Process this data: {{ fetch_data.response }}"
+                }
+            },
+            {
+                "id": "output",
+                "handler": "output",
+                "dependencies": [
+                    "process_data"
+                ],
+                "config": {
+                    "summary": "{{ process_data.result }}"
+                }
+            }
+        ]
+    }
+}

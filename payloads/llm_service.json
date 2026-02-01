@@ -1,0 +1,61 @@
+{
+    "name": "LLM Service Pipeline",
+    "dag": {
+        "nodes": [
+            {
+                "id": "input",
+                "handler": "input",
+                "dependencies": [],
+                "config": {
+                    "document": "This is a sample document about machine learning and artificial intelligence."
+                }
+            },
+            {
+                "id": "summarize",
+                "handler": "call_llm",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "prompt": "Summarize this document in one sentence: {{ input.document }}",
+                    "model": "gpt-4",
+                    "temperature": 0.3
+                }
+            },
+            {
+                "id": "extract_keywords",
+                "handler": "call_llm",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "prompt": "Extract 5 keywords from: {{ input.document }}",
+                    "model": "gpt-4",
+                    "temperature": 0.1
+                }
+            },
+            {
+                "id": "generate_questions",
+                "handler": "call_llm",
+                "dependencies": [
+                    "summarize"
+                ],
+                "config": {
+                    "prompt": "Based on this summary, generate 3 discussion questions: {{ summarize.response }}",
+                    "model": "gpt-4",
+                    "temperature": 0.7
+                }
+            },
+            {
+                "id": "output",
+                "handler": "output",
+                "dependencies": [
+                    "summarize",
+                    "extract_keywords",
+                    "generate_questions"
+                ],
+                "config": {}
+            }
+        ]
+    }
+}

@@ -1,0 +1,55 @@
+{
+    "name": "Parallel Fan-Out/Fan-In",
+    "dag": {
+        "nodes": [
+            {
+                "id": "input",
+                "handler": "input",
+                "dependencies": [],
+                "config": {
+                    "source": "parallel_test"
+                }
+            },
+            {
+                "id": "branch_a",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "url": "https://api.example.com/branch-a"
+                }
+            },
+            {
+                "id": "branch_b",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "url": "https://api.example.com/branch-b"
+                }
+            },
+            {
+                "id": "branch_c",
+                "handler": "call_external_service",
+                "dependencies": [
+                    "input"
+                ],
+                "config": {
+                    "url": "https://api.example.com/branch-c"
+                }
+            },
+            {
+                "id": "aggregator",
+                "handler": "output",
+                "dependencies": [
+                    "branch_a",
+                    "branch_b",
+                    "branch_c"
+                ],
+                "config": {}
+            }
+        ]
+    }
+}
