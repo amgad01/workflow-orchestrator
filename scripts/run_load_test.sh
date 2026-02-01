@@ -48,6 +48,10 @@ if ! check_health; then
     fi
 fi
 
+echo -e "${YELLOW}⏳ Running database migrations...${NC}"
+ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ENGINE_DIR" && docker compose exec -T api alembic upgrade head
+
 echo -e "\n${YELLOW}=== Starting Load Test (via Docker) ===${NC}"
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 

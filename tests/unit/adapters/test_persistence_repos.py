@@ -11,7 +11,11 @@ from src.domain.workflow.value_objects.node_status import NodeStatus
 class TestPgWorkflowRepository:
     @pytest.fixture
     def mock_session(self):
-        return AsyncMock()
+        session = MagicMock()
+        session.add = MagicMock()
+        session.commit = AsyncMock()
+        session.execute = AsyncMock()
+        return session
 
     @pytest.mark.asyncio
     async def test_save_workflow(self, mock_session):
@@ -39,7 +43,11 @@ class TestPgWorkflowRepository:
 class TestPgExecutionRepository:
     @pytest.fixture
     def mock_session(self):
-        return AsyncMock()
+        session = MagicMock()
+        session.add = MagicMock()
+        session.commit = AsyncMock()
+        session.execute = AsyncMock()
+        return session
 
     @pytest.mark.asyncio
     async def test_save_execution(self, mock_session):

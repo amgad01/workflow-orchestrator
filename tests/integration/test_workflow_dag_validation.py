@@ -12,7 +12,7 @@ Tests cover:
 
 import pytest
 from httpx import AsyncClient, ASGITransport
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 from src.main import app
 from src.shared.config import settings
 
@@ -46,13 +46,25 @@ class TestWorkflowDagValidation:
             "src.adapters.primary.api.routes.health.engine", self.mock_engine
         )
 
-        self.mock_session = AsyncMock()
+        self.mock_session = MagicMock()
+        self.mock_session.add = MagicMock()
+        self.mock_session.commit = AsyncMock()
+        self.mock_session.execute = AsyncMock()
+
+        class DummySessionContext:
+            async def __aenter__(self_inner):
+                return self.mock_session
+
+            async def __aexit__(self_inner, exc_type, exc, tb):
+                return False
+
         monkeypatch.setattr(
             "src.adapters.primary.api.dependencies.async_session_factory",
-            lambda: self.mock_session,
+            lambda: DummySessionContext(),
         )
         monkeypatch.setattr(
-            "src.shared.database.async_session_factory", lambda: self.mock_session
+            "src.shared.database.async_session_factory",
+            lambda: DummySessionContext(),
         )
 
         self.app = app

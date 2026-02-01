@@ -32,6 +32,10 @@ if ! check_health; then
     check_health || (echo -e "${RED}✗ FATAL: Health check failed.${NC}" && exit 1)
 fi
 
+echo -e "${YELLOW}⏳ Running database migrations...${NC}"
+ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$ENGINE_DIR" && docker compose exec -T api alembic upgrade head
+
 pass_count=0
 fail_count=0
 
