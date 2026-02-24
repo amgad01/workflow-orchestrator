@@ -1,5 +1,5 @@
 #!/bin/bash
-# Applied AI Challenge: The "Senior-Grade" Validation Suite
+# Workflow Orchestrator: Validation Suite
 # Operational, Performance, and Integrity Gates.
 
 set -e
@@ -12,7 +12,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}====================================================${NC}"
-echo -e "${BLUE}  Applied AI Challenge: Validation Suite          ${NC}"
+echo -e "${BLUE}  Workflow Orchestrator: Validation Suite           ${NC}"
 echo -e "${BLUE}  Target: $BASE_URL                                 ${NC}"
 echo -e "${BLUE}====================================================${NC}"
 
@@ -181,7 +181,7 @@ test_result "RateLimit-Remaining Header present" "x-ratelimit-remaining" "$(echo
 # 2. DLQ Validation (Failure Propagation)
 echo -e "${BLUE}Testing DLQ / Failure Propagation...${NC}"
 # Submit a DAG designed to fail
-fail_payload='{"name":"DLQ_Test","dag":{"nodes":[{"id":"fail_node","handler":"call_external_service","config":{"url":"http://fail-me.com"}}]}}'
+fail_payload='{"name":"DLQ_Test","dag":{"nodes":[{"id":"fail_node","handler":"call_external_service","config":{"simulate_failure":true}}]}}'
 fail_submit=$(curl -s -X POST "$BASE_URL/api/v1/workflow" -H "Content-Type: application/json" -d "$fail_payload")
 fail_exec_id=$(echo "$fail_submit" | grep -o '"execution_id":"[^"]*"' | cut -d'"' -f4)
 
@@ -224,7 +224,7 @@ fi
 echo -e "${BLUE}Testing Circuit Breaker (Isolation)...${NC}"
 # Logic: If the worker is in failure mode (it should be after 3 failures), the circuit opens.
 # We'll trigger one more and see if it fails.
-cb_payload='{"name":"CB_Test","dag":{"nodes":[{"id":"cb_node","handler":"call_external_service","config":{"url":"http://fail-fast.com"}}]}}'
+cb_payload='{"name":"CB_Test","dag":{"nodes":[{"id":"cb_node","handler":"call_external_service","config":{"simulate_failure":true}}]}}'
 cb_submit=$(curl -s -X POST "$BASE_URL/api/v1/workflow" -H "Content-Type: application/json" -d "$cb_payload")
 cb_exec_id=$(echo "$cb_submit" | grep -o '"execution_id":"[^"]*"' | cut -d'"' -f4)
 curl -s -X POST "$BASE_URL/api/v1/workflow/trigger/$cb_exec_id" > /dev/null

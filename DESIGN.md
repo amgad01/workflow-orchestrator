@@ -5,25 +5,31 @@ This document outlines the architectural decisions, trade-offs, and algorithms u
 ## 1. Key Design Decisions
 
 ### 1.1 Hybrid Storage Architecture (Hot/Cold Path)
+
 To satisfy the requirement for high throughput (targeting 35+ workflows/sec), we implemented a **Polyglot Persistence** strategy:
-*   **Hot Path (Redis)**: All active execution state (Node Status, Locks, Temporary Output, Metadata) is stored in Redis. This allows for sub-millisecond reads/writes during the intensive orchestration loop, avoiding the latency of disk-based RDBMS commits for every state transition.
-*   **Cold Path (PostgreSQL)**: Workflow definitions (DAGs) and final execution results are persisted to a relational database. This ensures ACID compliance for the system of record and allows for complex historical querying and audit trails.
-*   **Result**: We achieve ~10x higher throughput compared to a DB-only approach by effectively decoupling execution speed from persistence durability.
+
+* **Hot Path (Redis)**: All active execution state (Node Status, Locks, Temporary Output, Metadata) is stored in Redis. This allows for sub-millisecond reads/writes during the intensive orchestration loop, avoiding the latency of disk-based RDBMS commits for every state transition.
+* **Cold Path (PostgreSQL)**: Workflow definitions (DAGs) and final execution results are persisted to a relational database. This ensures ACID compliance for the system of record and allows for complex historical querying and audit trails.
+* **Result**: We achieve ~10x higher throughput compared to a DB-only approach by effectively decoupling execution speed from persistence durability.
 
 ### 1.2 Event-Driven Choreography via Redis Streams
+
 Instead of a monolithic polling loop that hammers the database, the system is fully reactive.
-*   **Decision**: Use Redis Streams with Consumer Groups.
-*   **Reasoning**: 
-    1.  **Reliability**: Unlike Pub/Sub, Streams persist messages, allowing for replayability.
-    2.  **Scalability**: Consumer Groups enable competing consumers pattern, allowing us to autoscale workers horizontally without race conditions.
-    3.  **Pel (Pending Entry List)**: Built-in tracking of unacknowledged messages facilitates robust crash recovery.
-*   **Flow**: `Task Completion Event` -> `Orchestrator Evaluation` -> `Task Dispatch Event` -> `Worker Execution`.
+
+* **Decision**: Use Redis Streams with Consumer Groups.
+* **Reasoning**:
+    1. **Reliability**: Unlike Pub/Sub, Streams persist messages, allowing for replayability.
+    2. **Scalability**: Consumer Groups enable competing consumers pattern, allowing us to autoscale workers horizontally without race conditions.
+    3. **Pel (Pending Entry List)**: Built-in tracking of unacknowledged messages facilitates robust crash recovery.
+* **Flow**: `Task Completion Event` -> `Orchestrator Evaluation` -> `Task Dispatch Event` -> `Worker Execution`.
 
 ### 1.3 Resilience & Observability
+
 We treated "Day 2" operations as a first-class design concern, implementing specific patterns to handle the inevitable failures of distributed systems:
-*   **Dead Letter Queue (DLQ)**: A dedicated Redis Stream captures tasks that fail repeatedly (max 3 retries). This prevents "poison pill" messages from clogging the main queue and allows operators to inspect and retry payloads via API.
-*   **The Reaper**: A background resilience service that periodically scans the Redis Pending Entry List (PEL). It identifies tasks owned by workers that have seemingly vanished (stalled for >5 minutes) and reclaims them for execution, guaranteeing progress even during catastrophic worker node failures.
-*   **Rate Limiting**: To prevent API saturation, we implemented a sliding window rate limiter (60 req/min) using Redis, protecting the ingress during traffic bursts.
+
+* **Dead Letter Queue (DLQ)**: A dedicated Redis Stream captures tasks that fail repeatedly (max 3 retries). This prevents "poison pill" messages from clogging the main queue and allows operators to inspect and retry payloads via API.
+* **The Reaper**: A background resilience service that periodically scans the Redis Pending Entry List (PEL). It identifies tasks owned by workers that have seemingly vanished (stalled for >5 minutes) and reclaims them for execution, guaranteeing progress even during catastrophic worker node failures.
+* **Rate Limiting**: To prevent API saturation, we implemented a sliding window rate limiter (60 req/min) using Redis, protecting the ingress during traffic bursts.
 
 ---
 
@@ -32,13 +38,14 @@ We treated "Day 2" operations as a first-class design concern, implementing spec
 The core orchestration logic uses a **Reactive State Evaluation** model efficiently implemented with O(1) lookups.
 
 **The Algorithm:**
-1.  **Trigger**: The Orchestrator consumes a `CompletionMessage` for Node A.
-2.  **DAG Lookup**: Using the cached DAG definition, it identifies all immediate children of Node A (e.g., Nodes B and C).
-3.  **Parent Scan**: For *each* child, the Orchestrator performs a multiget check against the Redis State Store to retrieve the status of *all* its parents.
-4.  **Transition Logic**:
-    *   **Ready**: If **ALL** parents are in `COMPLETED` or `SKIPPED` state -> The child is marked `PENDING` and a `TaskMessage` is published.
-    *   **Fail-Fast**: If **ANY** parent is `FAILED` -> The child is immediately marked `SKIPPED` (or `FAILED` depending on config), and this status propagates downstream instantly.
-    *   **Wait**: If any parent is `RUNNING` or `PENDING` -> No action is taken.
+
+1. **Trigger**: The Orchestrator consumes a `CompletionMessage` for Node A.
+2. **DAG Lookup**: Using the cached DAG definition, it identifies all immediate children of Node A (e.g., Nodes B and C).
+3. **Parent Scan**: For *each* child, the Orchestrator performs a multiget check against the Redis State Store to retrieve the status of *all* its parents.
+4. **Transition Logic**:
+    * **Ready**: If **ALL** parents are in `COMPLETED` or `SKIPPED` state -> The child is marked `PENDING` and a `TaskMessage` is published.
+    * **Fail-Fast**: If **ANY** parent is `FAILED` -> The child is immediately marked `SKIPPED` (or `FAILED` depending on config), and this status propagates downstream instantly.
+    * **Wait**: If any parent is `RUNNING` or `PENDING` -> No action is taken.
 
 This approach ensures that the latency between a parent finishing and a child starting is bounded only by the network round-trip to Redis (<2ms), rather than a polling interval (seconds).
 
@@ -50,7 +57,7 @@ A "Fan-In" occurs when a node has multiple parents executing in parallel.
 **Scenario**: Node C depends on Node A and Node B. A and B finish at the exact same millisecond.
 
 **The Race Condition**:
-Two Orchestrator instances (or threads) will process the completion events for A and B simultaneously. Both will check C's parents. Both will see that A and B are finished. Both will attempt to dispatch Node C. 
+Two Orchestrator instances (or threads) will process the completion events for A and B simultaneously. Both will check C's parents. Both will see that A and B are finished. Both will attempt to dispatch Node C.
 *Result*: Node C executes twice, potentially causing data corruption or double-spending.
 
 **Solution: Distributed Locking (Redlock Pattern)**

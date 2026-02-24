@@ -96,20 +96,20 @@ The Event-Driven Workflow Engine follows a strict **Hexagonal Architecture** (Po
 
 ## Component Roles & Responsibilities
 
-1. **API Service (`src/adapters/primary/api`)**: 
+1. **API Service (`src/adapters/primary/api`)**:
    - The Gateway: Validates DAG structure, persists definitions to PostgreSQL, initializes Redis state.
    - Characteristics: Stateless, Scalable, Rate-Limited.
 
-2. **Redis (Broker & State)**: 
+2. **Redis (Broker & State)**:
    - The Central Nervous System: Acts as the "Hot Store" for real-time execution state and message bus for task distribution.
 
-3. **Orchestrator (`src/application/orchestrator`)**: 
+3. **Orchestrator (`src/application/orchestrator`)**:
    - The Brain: Consumes completion messages, evaluates DAG dependencies, resolves data templates, and dispatches new tasks.
 
-4. **Worker Cluster (`src/workers`)**: 
+4. **Worker Cluster (`src/workers`)**:
    - The Muscle: Stateless consumers that execute business logic with exactly-once semantics via Consumer Groups.
 
-5. **PostgreSQL (`src/adapters/persistence`)**: 
+5. **PostgreSQL (`src/adapters/persistence`)**:
    - System of Record: Stores immutable workflow definitions and execution history.
 
 ## Project Structure
