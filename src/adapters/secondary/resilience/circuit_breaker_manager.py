@@ -1,6 +1,7 @@
-from datetime import datetime
-from typing import Callable, TypeVar, Optional
 import json
+from collections.abc import Callable
+from datetime import datetime
+from typing import TypeVar
 
 import redis.asyncio as redis
 
@@ -63,7 +64,7 @@ class CircuitBreakerManager:
         self,
         circuit_name: str,
         operation: Callable[[], T],
-        fallback: Optional[Callable[[], T]] = None,
+        fallback: Callable[[], T] | None = None,
     ) -> T:
         circuit = self._get_or_create_circuit(circuit_name)
         await self._sync_from_redis(circuit)
@@ -85,7 +86,7 @@ class CircuitBreakerManager:
                 logger.info(f"Circuit '{circuit_name}' transitioning toward CLOSED after success")
             
             return result
-        except Exception as e:
+        except Exception:
             circuit.record_failure()
             await self._sync_to_redis(circuit)
             

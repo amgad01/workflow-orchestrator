@@ -1,15 +1,14 @@
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
-from src.adapters.primary.api.dependencies import get_state_store, get_message_broker
+from src.adapters.primary.api.dependencies import get_message_broker, get_state_store
 from src.adapters.secondary.redis.redis_dlq_repository import RedisDLQRepository
 from src.adapters.secondary.redis.redis_message_broker import RedisMessageBroker
 from src.adapters.secondary.redis.redis_state_store import RedisStateStore
-from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
 from src.domain.workflow.value_objects.node_status import NodeStatus
 from src.ports.secondary.message_broker import TaskMessage
-from src.shared.redis_client import redis_client
 from src.shared.logger import get_logger
+from src.shared.redis_client import redis_client
 
 logger = get_logger(__name__)
 
@@ -17,7 +16,7 @@ logger = get_logger(__name__)
 API_VERSION = "v1"
 router = APIRouter(prefix=f"/api/{API_VERSION}/admin/dlq", tags=["Admin - Dead Letter Queue"])
 
-# Lazy helper for DLQ repo since it's not in standard dependencies yet
+# Lazy helper since DLQ repo isn't in standard DI
 def get_dlq_repository() -> RedisDLQRepository:
     return RedisDLQRepository(redis_client)
 
@@ -121,7 +120,7 @@ async def retry_dlq_entry(
     
     return DLQRetryResponse(
         status="success",
-        message=f"Task re-submitted to queue",
+        message="Task re-submitted to queue",
         task_id=entry.task_id,
     )
 

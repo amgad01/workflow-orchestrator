@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+
 from src.domain.workflow.value_objects.node_status import NodeStatus
+
 
 class IStateStore(ABC):
     """

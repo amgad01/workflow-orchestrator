@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 
+
 class IMetrics(ABC):
     @abstractmethod
     def record_workflow_completion(self, workflow_id: str, status: str, duration: float) -> None:

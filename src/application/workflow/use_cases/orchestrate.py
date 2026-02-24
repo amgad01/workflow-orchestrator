@@ -1,30 +1,21 @@
-from datetime import datetime, timezone
 import logging
+from datetime import datetime, timezone
+
 from src.domain.workflow.value_objects.dag import DAG
 from src.domain.workflow.value_objects.node_status import NodeStatus
 from src.domain.workflow.value_objects.template import TemplateResolver
 from src.ports.secondary.execution_repository import IExecutionRepository
 from src.ports.secondary.message_broker import CompletionMessage, IMessageBroker, TaskMessage
+from src.ports.secondary.metrics import IMetrics
 from src.ports.secondary.state_store import IStateStore
 from src.ports.secondary.workflow_repository import IWorkflowRepository
-from src.ports.secondary.metrics import IMetrics
 
 logger = logging.getLogger(__name__)
 
 
 class OrchestrateUseCase:
-    """
-    Core orchestration logic for the event-driven workflow engine.
-    
-    This class is responsible for reacting to task completion events, evaluating the DAG state,
-    resolving dependencies, and dispatching subsequent tasks. It implements a "Reactive"
-    orchestration model where the completion of one task triggers the evaluation of the next.
+    """Reacts to task completions, resolves dependencies, and dispatches next tasks."""
 
-    key Features:
-        - Fan-In Handling: Uses distributed locks to safely coordinate multiple parent nodes completing simultaneously.
-        - Hot Path Optimization: Reads state primarily from Redis during execution for low latency.
-        - Fail-Fast: Immediately stops execution if any node fails.
-    """
     _dag_cache = {}
 
     def __init__(
@@ -42,7 +33,6 @@ class OrchestrateUseCase:
         self._metrics = metrics
 
     async def _get_workflow_dag(self, workflow_id: str) -> DAG | None:
-        """Retrieves DAG from cache or database with explicit None return type."""
         if workflow_id in self._dag_cache:
             return self._dag_cache[workflow_id]
 
@@ -54,18 +44,10 @@ class OrchestrateUseCase:
         return None
 
     async def handle_completion(self, completion: CompletionMessage) -> None:
-        """
-        Processes a task completion event from a worker.
-        
-        This is the main entry point for the event-driven reaction loop. It implements:
-        1. Idempotency Check: Verifies if the node is already reached a terminal state.
-        2. State Update: Persists the new node status and output to the State Store.
-        3. Progression: Triggers the dispatch logic to find next runnable nodes.
-        """
+        """Process a task completion: update state, check for failures, dispatch next nodes."""
         cached_status = await self._state_store.get_execution_status(completion.execution_id)
         if cached_status in (NodeStatus.CANCELLED, NodeStatus.FAILED, NodeStatus.COMPLETED):
             return
-
         if completion.success:
             await self._state_store.set_node_status(
                 completion.execution_id, completion.node_id, NodeStatus.COMPLETED
@@ -78,7 +60,6 @@ class OrchestrateUseCase:
             await self._state_store.set_node_status(
                 completion.execution_id, completion.node_id, NodeStatus.FAILED
             )
-            # Failure requires cold path (DB update)
             execution = await self._execution_repository.get_by_id(completion.execution_id)
             if execution:
                 await self._fail_execution(execution, "Task failed")
@@ -87,23 +68,11 @@ class OrchestrateUseCase:
         await self._dispatch_ready_nodes(completion.execution_id)
 
     async def _dispatch_ready_nodes(self, execution_id: str) -> None:
-        """
-        Evaluates the DAG to find and dispatch nodes that have become ready.
-        
-        Algorithm:
-        1. Identify pending nodes in the DAG.
-        2. Check if all parent dependencies are COMPLETED.
-        3. Acquire Distributed Lock: Critical for Fan-In scenarios to prevent race conditions 
-           where multiple parents complete at the same time.
-        4. Evaluate Conditions: Check if the node should be SKIPPED based on logic.
-        5. Resolve Templates: Inject outputs from parent nodes into the current node's config.
-        6. Dispatch: Publish a TaskMessage to the broker.
-        """
+        """Find pending nodes with all dependencies met, acquire lock, resolve templates, dispatch."""
         metadata = await self._state_store.get_execution_metadata(execution_id)
         workflow_id = metadata.get("workflow_id") if metadata else None
-        
+
         if not workflow_id:
-            # Cold Path: Fetch from DB if metadata is missing
             execution = await self._execution_repository.get_by_id(execution_id)
             if execution:
                 workflow_id = execution.workflow_id
@@ -118,12 +87,9 @@ class OrchestrateUseCase:
         pending_nodes = [n for n, s in node_statuses.items() if s == NodeStatus.PENDING]
 
         if not pending_nodes:
-            # Check for workflow completion
             if all(s in (NodeStatus.COMPLETED, NodeStatus.SKIPPED) for s in node_statuses.values()):
-                # Final completion requires cold path (DB update)
                 execution = await self._execution_repository.get_by_id(execution_id)
                 if execution and execution.status != NodeStatus.COMPLETED:
-                    # CRITICAL: Final timeout check before marking COMPLETED
                     if await self._check_timeout(execution):
                         return
 

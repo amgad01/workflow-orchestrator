@@ -1,14 +1,11 @@
-from prometheus_client import Counter, Histogram, Gauge, generate_latest, CONTENT_TYPE_LATEST
-from typing import Optional
+from prometheus_client import Counter, Gauge, Histogram
+
 from src.ports.secondary.metrics import IMetrics
 
+
 class MetricsRegistry(IMetrics):
-    """
-    Central registry for Prometheus metrics.
-    
-    Defines, initializes, and provides access to application-specific metrics
-    including counters, histograms, and gauges.
-    """
+    """Prometheus metrics registry."""
+
     def __init__(self):
 
         # Workflow metrics

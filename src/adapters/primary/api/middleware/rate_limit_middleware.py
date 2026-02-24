@@ -3,8 +3,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from src.adapters.secondary.redis.redis_rate_limiter import RedisRateLimiter
 from src.shared.config import settings
-from src.shared.redis_client import redis_client
 from src.shared.logger import get_logger
+from src.shared.redis_client import redis_client
 
 logger = get_logger(__name__)
 
@@ -22,7 +22,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if request.method != "POST" or not request.url.path.endswith("/workflow"):
             return await call_next(request)
 
-        # Use client IP as rate limit key (in production, use API key or user ID)
+        # Use client IP as rate limit key
         client_ip = request.client.host if request.client else "unknown"
         rate_limit_key = f"workflow_submit:{client_ip}"
 

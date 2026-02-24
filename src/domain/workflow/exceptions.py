@@ -1,11 +1,12 @@
-from typing import Any, Dict, Optional
+from typing import Any
+
 
 class WorkflowException(Exception):
     def __init__(
         self, 
         message: str, 
         error_code: str = "WORKFLOW_ERROR", 
-        context: Optional[Dict[str, Any]] = None
+        context: dict[str, Any] | None = None
     ):
         self.message = message
         self.error_code = error_code
@@ -40,7 +41,7 @@ class ExecutionNotFoundError(WorkflowException):
         )
 
 class InvalidWorkflowError(WorkflowException):
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             error_code="INVALID_WORKFLOW",

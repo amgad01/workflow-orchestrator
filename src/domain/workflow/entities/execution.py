@@ -28,14 +28,7 @@ class NodeExecution:
 
 @dataclass
 class Execution:
-    """
-    Aggregate Root representing a single run of a Workflow.
-    
-    This entity manages the lifecycle of all nodes within the execution. It acts
-    as the consistency boundary for state transitions - ensuring that node statuses
-    only change in valid ways and that the overall execution status reflects the
-    aggregate state of its nodes.
-    """
+    """Aggregate root for a single workflow run. Manages node lifecycle and status transitions."""
     workflow_id: str
     id: str = field(default_factory=lambda: str(uuid4()))
     status: NodeStatus = NodeStatus.PENDING
@@ -71,15 +64,7 @@ class Execution:
         self.status = NodeStatus.FAILED
 
     def is_node_ready(self, node_id: str, dependencies: tuple[str, ...]) -> bool:
-        """
-        Determines if a node is ready to run based on its dependencies.
-        
-        Logic:
-        1. Node must be PENDING (not already run).
-        2. ALL parent dependencies must be COMPLETED.
-        
-        This strict check prevents race conditions in Fan-In scenarios.
-        """
+        """True if node is PENDING and all dependencies are COMPLETED."""
         if self.get_node_status(node_id) != NodeStatus.PENDING:
             return False
         return all(
@@ -108,15 +93,7 @@ class Execution:
         self.completed_at = datetime.now(timezone.utc)
 
     def cancel(self) -> None:
-        """
-        Cancels the execution and stops all pending work.
-        
-        Cascading Effect:
-        - Marks the execution as CANCELLED.
-        - Iterates through all nodes: Any node that is PENDING or RUNNING is 
-          immediately transitioned to CANCELLED to prevent workers from picking it up
-          or to signal active workers to stop (via state check).
-        """
+        """Cancel execution and mark all pending/running nodes as CANCELLED."""
         self.status = NodeStatus.CANCELLED
         self.completed_at = datetime.now(timezone.utc)
         for node in self.node_states.values():

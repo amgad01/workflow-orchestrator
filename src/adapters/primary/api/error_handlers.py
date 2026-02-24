@@ -1,15 +1,13 @@
 from fastapi import Request, status
 from fastapi.responses import JSONResponse
+
 from src.domain.workflow.exceptions import WorkflowException
 from src.shared.logger import get_logger
 
 logger = get_logger(__name__)
 
 async def workflow_exception_handler(request: Request, exc: WorkflowException):
-    """
-    Global exception handler for WorkflowException and its subclasses.
-    Converts domain exceptions to structured JSON responses.
-    """
+    """Convert domain exceptions to structured JSON responses."""
     logger.error(
         "workflow_error",
         error_code=exc.error_code,
@@ -35,9 +33,6 @@ async def workflow_exception_handler(request: Request, exc: WorkflowException):
     )
 
 async def general_exception_handler(request: Request, exc: Exception):
-    """
-    Fallback handler for all unhandled exceptions.
-    """
     logger.exception("unhandled_exception", path=request.url.path)
     
     status_code = status.HTTP_500_INTERNAL_SERVER_ERROR

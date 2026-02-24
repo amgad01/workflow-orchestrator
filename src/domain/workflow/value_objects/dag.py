@@ -11,16 +11,7 @@ from src.domain.workflow.exceptions import (
 
 @dataclass(frozen=True)
 class NodeDefinition:
-    """
-    Immutable definition of a node used during DAG validation and construction.
-
-    Attributes:
-        id (str): Unique identifier for the node.
-        handler (str): Task handler identifier.
-        dependencies (tuple[str, ...]): List of parent node IDs.
-        config (dict): Static configuration parameters.
-        condition (str | None): Optional execution condition.
-    """
+    """Immutable node definition used during DAG validation and traversal."""
     id: str
     handler: str
     dependencies: tuple[str, ...]
@@ -28,12 +19,6 @@ class NodeDefinition:
     condition: str | None = None
 
     def validate(self) -> None:
-        """
-        Validates the node configuration details.
-
-        Raises:
-            ValueError: If required configuration keys are missing or invalid.
-        """
         if self.handler == "call_external_service":
             if "url" in self.config and not isinstance(self.config["url"], str):
                 raise ValueError(f"Node {self.id}: 'url' must be a string")
@@ -46,38 +31,15 @@ class NodeDefinition:
 
 @dataclass
 class DAG:
-    """
-    Represents the operational Directed Acyclic Graph structure of a workflow.
-    
-    This class is responsible for structural validation, cycle detection (via Kahn's Algorithm),
-    and providing traversal methods for the orchestrator.
+    """Validated DAG structure with cycle detection (Kahn's algorithm) and traversal methods."""
 
-    Attributes:
-        nodes (dict[str, NodeDefinition]): Map of node_id to node definition.
-        adjacency (dict[str, set[str]]): Adjacency list (Parent -> Children).
-        reverse_adjacency (dict[str, set[str]]): Reverse adjacency list (Child -> Parents).
-    """
     nodes: dict[str, NodeDefinition] = field(default_factory=dict)
     adjacency: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
     reverse_adjacency: dict[str, set[str]] = field(default_factory=lambda: defaultdict(set))
 
     @classmethod
     def from_json(cls, data: dict) -> "DAG":
-        """
-        Factory method to parse, build, and validate a DAG from a raw JSON payload.
-
-        Args:
-            data (dict): The workflow definition payload.
-
-        Returns:
-            DAG: A fully validated DAG instance.
-
-        Raises:
-            EmptyWorkflowError: If nodes list is empty.
-            DuplicateNodeIdError: If duplicate node IDs are found.
-            InvalidNodeReferenceError: If dependencies reference non-existent nodes.
-            CyclicDependencyError: If a cycle is detected in the graph.
-        """
+        """Parse, build, and validate a DAG from a raw JSON payload."""
         dag = cls()
         node_list = data.get("nodes", [])
 
@@ -113,24 +75,13 @@ class DAG:
                 self.reverse_adjacency[node_id].add(dep)
 
     def _validate_references(self) -> None:
-        """
-        Validates that all node dependencies exist within the graph.
-
-        Raises:
-            InvalidNodeReferenceError: If a dependency references a non-existent node.
-        """
         for node_id, node in self.nodes.items():
             for dep in node.dependencies:
                 if dep not in self.nodes:
                     raise InvalidNodeReferenceError(node_id, dep)
 
     def _detect_cycles(self) -> None:
-        """
-        Detects cycles using Kahn's Algorithm.
-        
-        This validates that the graph is a valid DAG by iteratively removing nodes
-        with zero in-degree. If nodes remain after processing, a cycle exists.
-        """
+        """Kahn's algorithm: iteratively remove zero in-degree nodes; remaining nodes form a cycle."""
         in_degree = {node_id: len(deps) for node_id, deps in self.reverse_adjacency.items()}
         for node_id in self.nodes:
             if node_id not in in_degree:

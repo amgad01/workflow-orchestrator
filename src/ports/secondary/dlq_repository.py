@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from typing import Optional
 
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
 
@@ -10,7 +9,7 @@ class IDLQRepository(ABC):
         pass
 
     @abstractmethod
-    async def pop(self, entry_id: str) -> Optional[DeadLetterEntry]:
+    async def pop(self, entry_id: str) -> DeadLetterEntry | None:
         pass
 
     @abstractmethod

@@ -10,12 +10,6 @@ from src.ports.secondary.execution_repository import IExecutionRepository
 
 
 class PostgresExecutionRepository(IExecutionRepository):
-    """
-    SQLAlchemy implementation of the execution repository.
-    
-    Maps domain entities to relational tables using the synchronous ORM patterns
-    adapted for async execution via `AsyncSession`.
-    """
     def __init__(self, session: AsyncSession):
         self._session = session
 
