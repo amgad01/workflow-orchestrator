@@ -1,9 +1,10 @@
+
 import pytest
-import asyncio
-from unittest.mock import MagicMock
+
 from src.adapters.secondary.workers.external_service_worker import ExternalServiceWorker
 from src.adapters.secondary.workers.llm_service_worker import LLMServiceWorker
 from src.ports.secondary.message_broker import TaskMessage
+
 
 @pytest.mark.asyncio
 async def test_external_service_worker_success():
@@ -30,13 +31,13 @@ async def test_external_service_worker_failure():
         execution_id="exec-1",
         node_id="node-1",
         handler="call_external_service",
-        config={"url": "http://fail.com"}
+        config={"url": "http://example.com", "simulate_failure": True}
     )
     
     with pytest.raises(Exception) as exc_info:
         await worker.process(task)
     
-    assert "failed" in str(exc_info.value)
+    assert "Simulated failure" in str(exc_info.value)
 
 @pytest.mark.asyncio
 async def test_llm_service_worker_success():

@@ -1,9 +1,9 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
+import pytest
 
 from src.adapters.secondary.resilience.circuit_breaker_manager import CircuitBreakerManager
-from src.domain.resilience.entities.circuit_breaker import CircuitBreaker, CircuitState
 from src.domain.resilience.exceptions.resilience_exceptions import CircuitOpenException
 
 

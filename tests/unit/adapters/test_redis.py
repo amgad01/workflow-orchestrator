@@ -1,11 +1,13 @@
-import pytest
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock
+
+import pytest
+
 from src.adapters.secondary.redis.redis_message_broker import RedisMessageBroker
 from src.adapters.secondary.redis.redis_state_store import RedisStateStore
-from src.ports.secondary.message_broker import TaskMessage, CompletionMessage
 from src.domain.workflow.value_objects.node_status import NodeStatus
-import redis.asyncio as redis
+from src.ports.secondary.message_broker import CompletionMessage, TaskMessage
+
 
 @pytest.mark.asyncio
 async def test_redis_message_broker_publish_task():

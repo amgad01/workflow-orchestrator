@@ -1,14 +1,18 @@
-import pytest
-from unittest.mock import AsyncMock
-from fastapi.testclient import TestClient
-from fastapi import FastAPI
-
-from src.adapters.primary.api.dlq_routes import (
-    router, DLQEntryResponse, DLQListResponse, DLQRetryResponse, get_dlq_repository
-)
-from src.adapters.primary.api.dependencies import get_message_broker, get_state_store
-from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
 from datetime import datetime
+from unittest.mock import AsyncMock
+
+import pytest
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from src.adapters.primary.api.dependencies import get_message_broker, get_state_store
+from src.adapters.primary.api.dlq_routes import (
+    DLQEntryResponse,
+    DLQListResponse,
+    get_dlq_repository,
+    router,
+)
+from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
 
 
 class TestDLQRoutes:
@@ -87,7 +91,7 @@ class TestDLQRoutes:
         mock_state_store.set_node_status.return_value = None
         
         # Need to patch redis_client.delete in DLQ routes
-        from unittest.mock import patch, AsyncMock
+        from unittest.mock import AsyncMock, patch
         
         mock_redis = AsyncMock()
         mock_redis.delete = AsyncMock(return_value=True)

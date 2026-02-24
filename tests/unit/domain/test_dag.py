@@ -1,6 +1,12 @@
 import pytest
+
+from src.domain.workflow.exceptions import (
+    CyclicDependencyError,
+    EmptyWorkflowError,
+    InvalidNodeReferenceError,
+)
 from src.domain.workflow.value_objects.dag import DAG
-from src.domain.workflow.exceptions import CyclicDependencyError, InvalidNodeReferenceError, EmptyWorkflowError
+
 
 def test_dag_creation_success():
     data = {

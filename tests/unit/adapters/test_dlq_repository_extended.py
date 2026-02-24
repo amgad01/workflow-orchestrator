@@ -1,10 +1,11 @@
-import pytest
-from unittest.mock import AsyncMock, patch, MagicMock
+import json
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
+import pytest
 
 from src.adapters.secondary.redis.redis_dlq_repository import RedisDLQRepository
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
-import json
 
 
 class TestRedisDLQRepositoryExtended:
@@ -37,14 +38,14 @@ class TestRedisDLQRepositoryExtended:
         
         # Verify xadd was called with correct stream
         call_args = mock_redis.xadd.call_args
-        assert call_args[0][0] == "workflow:dlq"
+        assert call_args[0][0] == RedisDLQRepository.DLQ_STREAM
         
         # Verify the data contains entry id
         data = call_args[0][1]
         assert data["id"] == sample_entry.id
         
         # Verify index is updated
-        mock_redis.hset.assert_called_with("workflow:dlq:index", sample_entry.id, "1")
+        mock_redis.hset.assert_called_with(RedisDLQRepository.DLQ_INDEX, sample_entry.id, "1")
 
     @pytest.mark.asyncio
     async def test_pop_entry_removes_from_dlq(self, dlq_repository, mock_redis, sample_entry):
@@ -91,7 +92,7 @@ class TestRedisDLQRepositoryExtended:
         count = await dlq_repository.count()
         
         assert count == 42
-        mock_redis.xlen.assert_called_with("workflow:dlq")
+        mock_redis.xlen.assert_called_with(RedisDLQRepository.DLQ_STREAM)
 
     @pytest.mark.asyncio
     async def test_delete_finds_and_removes_entry(self, dlq_repository, mock_redis, sample_entry):
@@ -105,8 +106,8 @@ class TestRedisDLQRepositoryExtended:
         result = await dlq_repository.delete(sample_entry.id)
         
         assert result is True
-        mock_redis.xdel.assert_called_with("workflow:dlq", "stream-id-2")
-        mock_redis.hdel.assert_called_with("workflow:dlq:index", sample_entry.id)
+        mock_redis.xdel.assert_called_with(RedisDLQRepository.DLQ_STREAM, "stream-id-2")
+        mock_redis.hdel.assert_called_with(RedisDLQRepository.DLQ_INDEX, sample_entry.id)
 
     @pytest.mark.asyncio
     async def test_delete_returns_false_when_not_found(self, dlq_repository, mock_redis):

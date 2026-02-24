@@ -1,11 +1,11 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import datetime, timezone
-import json
+from unittest.mock import AsyncMock, patch
 
-from src.worker import WorkerRunner
-from src.ports.secondary.message_broker import TaskMessage
+import pytest
+
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
+from src.ports.secondary.message_broker import TaskMessage
+from src.worker import WorkerRunner
 
 
 class TestWorkerDLQIntegration:
@@ -52,6 +52,10 @@ class TestWorkerDLQIntegration:
             mock_settings.DLQ_ENABLED = True
             mock_settings.DLQ_MAX_RETRIES = 3
             mock_settings.WORKER_ENABLE_DELAYS = False
+            mock_settings.WORKER_BACKOFF_BASE_SECONDS = 1.0
+            mock_settings.WORKER_BACKOFF_MAX_SECONDS = 30.0
+            mock_settings.WORKER_BACKOFF_JITTER_MAX = 0.1
+            mock_settings.WORKER_ERROR_PAUSE_SECONDS = 0.0
             
             # Simulate 3rd retry
             mock_redis.incr.return_value = 3
@@ -86,6 +90,10 @@ class TestWorkerDLQIntegration:
             mock_settings.DLQ_ENABLED = True
             mock_settings.DLQ_MAX_RETRIES = 3
             mock_settings.WORKER_ENABLE_DELAYS = False
+            mock_settings.WORKER_BACKOFF_BASE_SECONDS = 1.0
+            mock_settings.WORKER_BACKOFF_MAX_SECONDS = 30.0
+            mock_settings.WORKER_BACKOFF_JITTER_MAX = 0.1
+            mock_settings.WORKER_ERROR_PAUSE_SECONDS = 0.0
             
             # First retry
             mock_redis.incr.return_value = 1

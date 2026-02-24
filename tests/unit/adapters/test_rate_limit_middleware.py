@@ -1,8 +1,7 @@
+from unittest.mock import AsyncMock, patch
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI, Request
-from fastapi.testclient import TestClient
-from starlette.responses import Response
+from fastapi import FastAPI
 
 from src.adapters.primary.api.middleware.rate_limit_middleware import RateLimitMiddleware
 from src.domain.resilience.value_objects.rate_limit_result import RateLimitResult
@@ -36,7 +35,7 @@ class TestRateLimitMiddleware:
             mock_settings.RATE_LIMIT_ENABLED = True
             mock_settings.RATE_LIMIT_REQUESTS_PER_MINUTE = 60
             
-            middleware = RateLimitMiddleware(app, rate_limiter=mock_rate_limiter)
+            middleware = RateLimitMiddleware(app, rate_limiter=mock_rate_limiter)  # noqa: F841
         
         return app, mock_rate_limiter
 
@@ -54,7 +53,7 @@ class TestRateLimitMiddleware:
         # Note: This tests the middleware logic, actual HTTP testing done in integration tests
 
     def test_rate_limit_blocks_when_exceeded(self, mock_rate_limiter):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
         
         mock_rate_limiter.check_rate_limit.return_value = RateLimitResult(
             allowed=False,
@@ -81,7 +80,7 @@ class TestRateLimitMiddleware:
 
 class TestRateLimitResultEdgeCases:
     def test_retry_after_handles_past_reset_time(self):
-        from datetime import datetime, timezone, timedelta
+        from datetime import datetime, timedelta, timezone
         
         # Reset time in the past
         result = RateLimitResult(

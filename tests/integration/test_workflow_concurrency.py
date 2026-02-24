@@ -8,9 +8,11 @@ Tests cover:
 """
 
 import asyncio
-import pytest
-from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, patch
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from src.main import app
 from src.shared.config import settings
 

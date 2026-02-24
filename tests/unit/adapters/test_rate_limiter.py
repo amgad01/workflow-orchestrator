@@ -1,6 +1,7 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timedelta, timezone
+from unittest.mock import AsyncMock
+
+import pytest
 
 from src.adapters.secondary.redis.redis_rate_limiter import RedisRateLimiter
 from src.domain.resilience.value_objects.rate_limit_result import RateLimitResult

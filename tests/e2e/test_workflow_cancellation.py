@@ -10,6 +10,7 @@ To run: docker-compose up -d && pytest tests/e2e/ -v
 """
 
 import asyncio
+
 import pytest
 from httpx import AsyncClient
 

@@ -1,6 +1,6 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
-import asyncio
-from unittest.mock import AsyncMock, patch, MagicMock
 
 from src.adapters.secondary.workers.decision_worker import DecisionWorker
 from src.adapters.secondary.workers.reaper import ReaperRunner

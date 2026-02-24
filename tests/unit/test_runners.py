@@ -1,10 +1,11 @@
-import pytest
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
-from src.worker import WorkerRunner
+
+import pytest
+
 from src.orchestrator import OrchestratorRunner
 from src.ports.secondary.message_broker import CompletionMessage, TaskMessage
-from src.domain.workflow.value_objects.node_status import NodeStatus
+from src.worker import WorkerRunner
+
 
 @pytest.mark.asyncio
 async def test_worker_runner_process_task():

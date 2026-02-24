@@ -7,9 +7,11 @@ Tests cover:
 - Workflow cancellation errors
 """
 
-import pytest
-from httpx import AsyncClient, ASGITransport
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
+from httpx import ASGITransport, AsyncClient
+
 from src.main import app
 from src.shared.config import settings
 

@@ -1,10 +1,12 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from src.adapters.secondary.persistence.pg_workflow_repository import PostgresWorkflowRepository
+
+import pytest
+
+from src.adapters.secondary.persistence.models import ExecutionModel, WorkflowModel
 from src.adapters.secondary.persistence.pg_execution_repository import PostgresExecutionRepository
-from src.adapters.secondary.persistence.models import WorkflowModel, ExecutionModel
-from src.domain.workflow.entities.workflow import Workflow
+from src.adapters.secondary.persistence.pg_workflow_repository import PostgresWorkflowRepository
 from src.domain.workflow.entities.execution import Execution
+from src.domain.workflow.entities.workflow import Workflow
 from src.domain.workflow.value_objects.node_status import NodeStatus
 
 

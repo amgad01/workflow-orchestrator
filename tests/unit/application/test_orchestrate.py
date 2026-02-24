@@ -1,11 +1,14 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 from datetime import datetime, timezone
+from unittest.mock import AsyncMock
+
+import pytest
+
 from src.application.workflow.use_cases.orchestrate import OrchestrateUseCase
-from src.domain.workflow.value_objects.node_status import NodeStatus
-from src.ports.secondary.message_broker import CompletionMessage, TaskMessage
 from src.domain.workflow.entities.execution import Execution
 from src.domain.workflow.entities.workflow import Workflow
+from src.domain.workflow.value_objects.node_status import NodeStatus
+from src.ports.secondary.message_broker import CompletionMessage
+
 
 @pytest.fixture
 def mock_workflow_repo():
@@ -98,7 +101,8 @@ async def test_check_all_timeouts(orchestrate_use_case, mock_execution_repo, moc
     now = datetime.now(timezone.utc)
     execution = Execution(workflow_id="wf-1", id="exec-1")
     execution.status = NodeStatus.RUNNING
-    execution.started_at = now.replace(second=now.second - 10) if now.second >= 10 else now.replace(minute=now.minute-1, second=50)
+    from datetime import timedelta
+    execution.started_at = now - timedelta(seconds=10)
     execution.timeout_seconds = 5
     
     mock_execution_repo.get_running_executions.return_value = [execution]

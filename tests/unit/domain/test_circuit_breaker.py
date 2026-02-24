@@ -1,5 +1,3 @@
-import pytest
-from datetime import datetime
 
 from src.domain.resilience.entities.circuit_breaker import CircuitBreaker, CircuitState
 

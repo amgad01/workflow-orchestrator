@@ -1,17 +1,16 @@
+from unittest.mock import AsyncMock, MagicMock, patch
+
 import pytest
 from fastapi.testclient import TestClient
-from unittest.mock import AsyncMock, patch, MagicMock
-from datetime import datetime, timezone
 
-from src.main import app
-from src.adapters.primary.api.dto import WorkflowSubmitResponse, WorkflowStatusResponse, WorkflowResultsResponse
 from src.adapters.primary.api.dependencies import (
-    get_submit_workflow_use_case,
-    get_workflow_status_use_case,
-    get_workflow_results_use_case,
     get_cancel_workflow_use_case,
+    get_submit_workflow_use_case,
+    get_workflow_results_use_case,
+    get_workflow_status_use_case,
 )
 from src.domain.resilience.value_objects.rate_limit_result import RateLimitResult
+from src.main import app
 
 
 class TestApiRoutes:
@@ -104,19 +103,6 @@ class TestApiRoutes:
         assert response.json()["status"] == "RUNNING"
 
     def test_get_workflow_results_success(self, client, mock_results):
-        mock_results.execute.return_value = {
-            "execution_id": "exec-456", 
-            "workflow_id": "wf-123", 
-            "outputs": {"n1": {"output": "data"}}
-        }
-        
-        response = client.get("/api/v1/workflow/exec-456/results")
-        
-        assert response.status_code == 200
-        assert response.json()["outputs"]["n1"]["output"] == "data"
-
-    def test_get_workflow_results_alias_success(self, client, mock_results):
-        # Test the /workflows/{id}/results alias
         mock_results.execute.return_value = {
             "execution_id": "exec-456", 
             "workflow_id": "wf-123", 

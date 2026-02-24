@@ -1,7 +1,8 @@
-import pytest
-from unittest.mock import AsyncMock, MagicMock
 import json
 from datetime import datetime
+from unittest.mock import AsyncMock
+
+import pytest
 
 from src.adapters.secondary.redis.redis_dlq_repository import RedisDLQRepository
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
@@ -37,7 +38,7 @@ class TestRedisDLQRepository:
         
         mock_redis.xadd.assert_called_once()
         call_args = mock_redis.xadd.call_args
-        assert call_args[0][0] == "workflow:dlq"
+        assert call_args[0][0] == RedisDLQRepository.DLQ_STREAM
         assert call_args[0][1]["id"] == sample_entry.id
 
     @pytest.mark.asyncio

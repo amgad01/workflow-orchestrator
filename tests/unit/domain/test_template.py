@@ -1,5 +1,5 @@
-import pytest
 from src.domain.workflow.value_objects.template import TemplateResolver
+
 
 def test_template_resolve_simple_string():
     text = "Hello {{ node1.output }}"

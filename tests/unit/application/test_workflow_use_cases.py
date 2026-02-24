@@ -1,6 +1,6 @@
+from unittest.mock import AsyncMock
+
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from datetime import datetime, timezone
 
 
 class TestSubmitWorkflow:
@@ -21,7 +21,6 @@ class TestSubmitWorkflow:
         self, mock_workflow_repo, mock_execution_repo, mock_state_store
     ):
         from src.application.workflow.use_cases.submit_workflow import SubmitWorkflowUseCase
-        from src.domain.workflow.value_objects.dag import DAG
         
         mock_workflow_repo.save.return_value = None
         mock_execution_repo.save.return_value = None
@@ -76,7 +75,6 @@ class TestTriggerExecution:
         from src.domain.workflow.entities.execution import Execution
         from src.domain.workflow.entities.workflow import Workflow
         from src.domain.workflow.value_objects.node_status import NodeStatus
-        from src.domain.workflow.value_objects.dag import DAG
         
         dag_json = {
             "nodes": [

@@ -10,6 +10,7 @@ To run: docker-compose up -d && pytest tests/e2e/ -v
 """
 
 import asyncio
+
 import pytest
 from httpx import AsyncClient
 
@@ -97,19 +98,19 @@ class TestCircuitBreakerE2E:
                             "id": "f1",
                             "handler": "call_external_service",
                             "dependencies": [],
-                            "config": {"url": "http://fail.com"},
+                            "config": {"simulate_failure": True},
                         },
                         {
                             "id": "f2",
                             "handler": "call_external_service",
                             "dependencies": [],
-                            "config": {"url": "http://fail.com"},
+                            "config": {"simulate_failure": True},
                         },
                         {
                             "id": "f3",
                             "handler": "call_external_service",
                             "dependencies": [],
-                            "config": {"url": "http://fail.com"},
+                            "config": {"simulate_failure": True},
                         },
                     ]
                 },

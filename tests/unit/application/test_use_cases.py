@@ -1,12 +1,15 @@
-import pytest
 from unittest.mock import AsyncMock, MagicMock
-from src.application.workflow.use_cases.trigger_execution import TriggerExecutionUseCase
+
+import pytest
+
 from src.application.workflow.use_cases.cancel_workflow import CancelWorkflowUseCase
-from src.application.workflow.use_cases.get_workflow_status import GetWorkflowStatusUseCase
 from src.application.workflow.use_cases.get_workflow_results import GetWorkflowResultsUseCase
-from src.domain.workflow.value_objects.node_status import NodeStatus
+from src.application.workflow.use_cases.get_workflow_status import GetWorkflowStatusUseCase
+from src.application.workflow.use_cases.trigger_execution import TriggerExecutionUseCase
 from src.domain.workflow.entities.execution import Execution
 from src.domain.workflow.entities.workflow import Workflow
+from src.domain.workflow.value_objects.node_status import NodeStatus
+
 
 @pytest.fixture
 def mock_repos():
