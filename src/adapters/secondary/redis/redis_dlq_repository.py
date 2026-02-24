@@ -1,16 +1,15 @@
 import json
-from datetime import datetime
-from typing import Optional
 
 import redis.asyncio as redis
 
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
 from src.ports.secondary.dlq_repository import IDLQRepository
+from src.shared.config import settings
 
 
 class RedisDLQRepository(IDLQRepository):
-    DLQ_STREAM = "workflow:dlq"
-    DLQ_INDEX = "workflow:dlq:index"
+    DLQ_STREAM = settings.STREAM_DLQ_KEY
+    DLQ_INDEX = settings.STREAM_DLQ_INDEX_KEY
 
     def __init__(self, redis_client: redis.Redis):
         self._redis = redis_client
@@ -25,7 +24,7 @@ class RedisDLQRepository(IDLQRepository):
         )
         await self._redis.hset(self.DLQ_INDEX, entry.id, "1")
 
-    async def pop(self, entry_id: str) -> Optional[DeadLetterEntry]:
+    async def pop(self, entry_id: str) -> DeadLetterEntry | None:
         entries = await self.list_entries(limit=1000)
         for entry in entries:
             if entry.id == entry_id:
@@ -36,7 +35,7 @@ class RedisDLQRepository(IDLQRepository):
     async def list_entries(self, limit: int = 100) -> list[DeadLetterEntry]:
         messages = await self._redis.xrange(self.DLQ_STREAM, count=limit)
         entries = []
-        for stream_id, data in messages:
+        for _, data in messages:
             try:
                 entry_dict = json.loads(data["data"])
                 entries.append(DeadLetterEntry.from_dict(entry_dict))

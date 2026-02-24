@@ -1,5 +1,7 @@
 import asyncio
+import random
 import signal
+import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
@@ -7,32 +9,23 @@ from src.adapters.secondary.redis.redis_dlq_repository import RedisDLQRepository
 from src.adapters.secondary.redis.redis_message_broker import RedisMessageBroker
 from src.adapters.secondary.redis.redis_state_store import RedisStateStore
 from src.adapters.secondary.workers.base_worker import BaseWorker
+from src.adapters.secondary.workers.decision_worker import DecisionWorker
 from src.adapters.secondary.workers.external_service_worker import ExternalServiceWorker
 from src.adapters.secondary.workers.io_workers import InputWorker, OutputWorker
 from src.adapters.secondary.workers.llm_service_worker import LLMServiceWorker
-from src.adapters.secondary.workers.decision_worker import DecisionWorker
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
 from src.ports.secondary.message_broker import CompletionMessage, TaskMessage
-from src.shared.metrics import metrics_registry
-from src.shared.redis_client import redis_client
 from src.shared.config import settings
 from src.shared.logger import get_logger
+from src.shared.metrics import metrics_registry
+from src.shared.redis_client import redis_client
 
 logger = get_logger(__name__)
 
 
 class WorkerRunner:
-    """
-    Main entry point for the Worker process.
-    
-    This component consumes tasks from Redis Streams, delegates them to specific
-    handler implementations (e.g. LLM, API), and reports results.
-    
-    Key Responsibilities:
-    - Task Consumption (Group-based).
-    - Idempotency (prevent double-processing).
-    - Resilience (DLQ management and retries).
-    """
+    """Consumes tasks from Redis Streams, delegates to handlers, and reports results."""
+
     def __init__(self):
         self._broker = RedisMessageBroker(redis_client)
         self._state_store = RedisStateStore(redis_client)
@@ -49,7 +42,7 @@ class WorkerRunner:
 
         loop = asyncio.get_running_loop()
         shutdown_event = asyncio.Event()
-        
+
         def signal_handler():
             logger.info("shutdown_signal_received")
             shutdown_event.set()
@@ -68,38 +61,24 @@ class WorkerRunner:
                     count=settings.WORKER_BATCH_SIZE,
                     block_ms=settings.WORKER_BLOCK_MS,
                 )
-
                 if tasks:
-                    # Process tasks in parallel for high throughput
                     await asyncio.gather(*[self.process_task(t) for t in tasks])
-
             except Exception as e:
                 logger.error("worker_main_loop_error", error=str(e), exc_info=True)
                 if not shutdown_event.is_set():
-                    await asyncio.sleep(1)
-        
+                    await asyncio.sleep(settings.WORKER_ERROR_PAUSE_SECONDS)
+
         logger.info("worker_shutdown_complete")
 
     async def process_task(self, task: TaskMessage) -> None:
-        """
-        Executes a single task with full resilience wrappers.
-        
-        Business Logic:
-        1. Idempotency Check: Verifies if task ID was already processed (Redis Set).
-        2. Execution: Delegates to the registered handler.
-        3. Failure Handling: 
-            - Retries locally if below max limit.
-            - Moves to Dead Letter Queue (DLQ) if retries exhausted.
-        4. Completion: Publishes success/failure event to Orchestrator.
-        """
+        """Execute a task with idempotency checks, retries, and DLQ fallback."""
         from src.shared.logger import bind_context, clear_context
         bind_context({"execution_id": task.execution_id, "node_id": task.node_id})
-        
+
         try:
+            # Idempotency: skip if already processed
             processed_key = f"execution:{task.execution_id}:processed_tasks"
-            is_processed = await redis_client.sismember(processed_key, task.id)
-            
-            if is_processed:
+            if await redis_client.sismember(processed_key, task.id):
                 logger.info("skipping_duplicate_task", task_id=task.id)
                 if task.stream_id:
                     await self._broker.acknowledge_task(task.stream_id)
@@ -112,9 +91,9 @@ class WorkerRunner:
                 logger.error("handler_not_found", handler=task.handler)
                 return
 
-            import time
             start_time = time.time()
             status = "SUCCESS"
+
             try:
                 output = await handler.process(task)
                 completion = CompletionMessage(
@@ -127,15 +106,13 @@ class WorkerRunner:
             except Exception as e:
                 logger.error("task_failed", error=str(e), exc_info=True)
                 status = "FAILED"
-                
-                # DLQ retry tracking
+
                 if settings.DLQ_ENABLED:
                     retry_count = await self._increment_retry_count(task)
-                    
+
                     if retry_count >= settings.DLQ_MAX_RETRIES:
                         await self._move_to_dlq(task, str(e), retry_count)
                         logger.warning("task_moved_to_dlq", retry_count=retry_count)
-                        # Only send failure to orchestrator AFTER max retries
                         completion = CompletionMessage(
                             id=task.id,
                             execution_id=task.execution_id,
@@ -144,16 +121,13 @@ class WorkerRunner:
                             error=str(e),
                         )
                     else:
+                        # Re-publish for retry; don't notify orchestrator yet
                         logger.info("task_failure_retry", retry_count=retry_count, max_retries=settings.DLQ_MAX_RETRIES)
-                        # Re-publish task for another attempt
                         await self._broker.publish_task(task)
-                        # Mark current stream message as processed, BUT DO NOT send completion to orchestrator
-                        # so the node remains in RUNNING/PENDING state from his perspective.
                         if task.stream_id:
                             await self._broker.acknowledge_task(task.stream_id)
                         return
                 else:
-                    # DLQ disabled, fail immediately
                     completion = CompletionMessage(
                         id=task.id,
                         execution_id=task.execution_id,
@@ -166,43 +140,37 @@ class WorkerRunner:
             metrics_registry.record_node_completion(task.handler, status, duration)
 
             await self._broker.publish_completion(completion)
-            
+
+            # Mark as processed for idempotency
             await redis_client.sadd(processed_key, task.id)
-            await redis_client.expire(processed_key, 86400)
-            
+            await redis_client.expire(processed_key, settings.WORKER_IDEMPOTENCY_TTL_SECONDS)
+
             if task.stream_id:
                 await self._broker.acknowledge_task(task.stream_id)
         finally:
             clear_context()
 
     async def _increment_retry_count(self, task: TaskMessage) -> int:
-        """Increment retry count and apply exponential backoff delay."""
+        """Atomically increment retry counter and apply exponential backoff."""
         retry_key = f"task_retry:{task.execution_id}:{task.node_id}"
         retry_count = await redis_client.incr(retry_key)
-        await redis_client.expire(retry_key, 86400)  # 24h TTL
-        
-        # Apply exponential backoff with jitter before retry
+        await redis_client.expire(retry_key, settings.WORKER_IDEMPOTENCY_TTL_SECONDS)
+
         backoff_delay = self._calculate_backoff_delay(retry_count)
         if backoff_delay > 0:
             logger.info("applying_retry_backoff", delay_seconds=backoff_delay, retry_count=retry_count)
             await asyncio.sleep(backoff_delay)
-        
+
         return retry_count
 
     def _calculate_backoff_delay(self, retry_count: int) -> float:
-        """
-        Calculate exponential backoff delay with jitter.
-        
-        Formula: min(base * 2^retry_count, max_delay) + random_jitter
-        This prevents thundering herd when multiple tasks retry simultaneously.
-        """
-        import random
-        base_delay = 1.0  # 1 second base
-        max_delay = 30.0  # Cap at 30 seconds
-        
+        """min(base * 2^retry, max) + jitter"""
+        base_delay = settings.WORKER_BACKOFF_BASE_SECONDS
+        max_delay = settings.WORKER_BACKOFF_MAX_SECONDS
+
         exponential_delay = min(base_delay * (2 ** (retry_count - 1)), max_delay)
-        jitter = random.uniform(0, exponential_delay * 0.1)  # 10% jitter
-        
+        jitter = random.uniform(0, exponential_delay * settings.WORKER_BACKOFF_JITTER_MAX)
+
         return exponential_delay + jitter
 
     async def _move_to_dlq(self, task: TaskMessage, error: str, retry_count: int) -> None:

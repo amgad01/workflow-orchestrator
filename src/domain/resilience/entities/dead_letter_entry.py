@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 from uuid import uuid4
 
@@ -15,7 +15,7 @@ class DeadLetterEntry:
     retry_count: int
     original_timestamp: datetime
     id: str = field(default_factory=lambda: str(uuid4()))
-    failed_at: datetime = field(default_factory=datetime.utcnow)
+    failed_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
     def to_dict(self) -> dict[str, Any]:
         return {

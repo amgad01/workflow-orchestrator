@@ -12,8 +12,9 @@ class ExternalServiceWorker(BaseWorker):
     def __init__(self):
         self._circuit_breaker = CircuitBreaker(
             name="external_service",
-            failure_threshold=3,
-            reset_timeout_seconds=10,
+            failure_threshold=settings.CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+            reset_timeout_seconds=settings.CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS,
+            half_open_max_calls=settings.CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS,
         )
 
     @property
@@ -44,12 +45,11 @@ class ExternalServiceWorker(BaseWorker):
             )
             await asyncio.sleep(delay)
 
-        url = task.config.get("url", "http://example.com/api")
-        
-        # Simulate occasional failures to test circuit breaker
-        # In a real app, this would be an actual HTTP call
-        if "fail" in url:
-            raise Exception(f"External service at {url} failed")
+        url = task.config.get("url", settings.WORKER_DEFAULT_EXTERNAL_URL)
+
+        # Failure simulation for testing
+        if task.config.get("simulate_failure", False):
+            raise Exception(f"Simulated failure for external service at {url}")
 
         return {
             "status_code": 200,

@@ -20,8 +20,14 @@ class LLMServiceWorker(BaseWorker):
             )
             await asyncio.sleep(delay)
 
+        # Failure simulation for testing
+        if task.config.get("simulate_failure", False):
+            raise Exception("Simulated LLM service failure")
+
         prompt = task.config.get("prompt", "No prompt provided")
-        model = task.config.get("model", "gpt-4")
+        model = task.config.get("model", settings.WORKER_DEFAULT_LLM_MODEL)
+        temperature = task.config.get("temperature", settings.WORKER_DEFAULT_LLM_TEMPERATURE)
+        max_tokens = task.config.get("max_tokens", settings.WORKER_DEFAULT_LLM_MAX_TOKENS)
 
         responses = [
             "Based on the analysis, the recommended approach is to proceed with option A.",
@@ -32,7 +38,9 @@ class LLMServiceWorker(BaseWorker):
 
         return {
             "model": model,
+            "temperature": temperature,
+            "max_tokens": max_tokens,
             "prompt": prompt,
             "response": random.choice(responses),
-            "tokens_used": random.randint(100, 500),
+            "tokens_used": random.randint(100, max_tokens),
         }

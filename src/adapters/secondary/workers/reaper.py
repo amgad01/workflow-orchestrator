@@ -1,33 +1,28 @@
 import asyncio
 import signal
+from uuid import uuid4
+
 from src.adapters.secondary.redis.redis_message_broker import RedisMessageBroker
-from src.shared.redis_client import redis_client
+from src.shared.config import settings
 from src.shared.logger import get_logger
+from src.shared.redis_client import redis_client
 
 logger = get_logger(__name__)
 
 class ReaperRunner:
-    """
-    Background service that recovers "Zombie Tasks".
-    
-    Zombies are tasks that were claimed by a worker but never completed (due to crash
-    or network failure). The Reaper monitors the Pending Entry List (PEL) for
-    messages that have exceeded a max idle time.
-    
-    Strategy: The 'Resurrect and Bury' pattern.
-    1. Claim the stuck task.
-    2. Re-publish it as a new event (Resurrect).
-    3. Acknowledge the old stuck event (Bury).
-    """
-    def __init__(self, check_interval_seconds: int = 60, min_idle_seconds: int = 300):
+    """Recovers zombie tasks from the Redis PEL via XAUTOCLAIM, re-publishes them, and ACKs the originals."""
+    def __init__(
+        self,
+        check_interval_seconds: int | None = None,
+        min_idle_seconds: int | None = None,
+    ):
         self._broker = RedisMessageBroker(redis_client)
-        self._check_interval = check_interval_seconds
-        self._min_idle_ms = min_idle_seconds * 1000
-        # The reaper joins the consumer group but acts as a special consumer
-        self._consumer_name = "reaper-process-01"
+        self._check_interval = check_interval_seconds if check_interval_seconds is not None else settings.REAPER_CHECK_INTERVAL_SECONDS
+        self._min_idle_ms = (min_idle_seconds if min_idle_seconds is not None else settings.REAPER_MIN_IDLE_SECONDS) * 1000
+        self._consumer_name = f"reaper-{uuid4().hex[:8]}"
 
     async def run(self):
-        logger.info(f"💀 Reaper started. Watching for tasks idle > {self._min_idle_ms}ms...")
+        logger.info(f"Reaper started (consumer={self._consumer_name}). Watching for tasks idle > {self._min_idle_ms}ms...")
         
         await self._broker.create_consumer_groups()
 
@@ -35,7 +30,7 @@ class ReaperRunner:
         shutdown_event = asyncio.Event()
 
         def signal_handler():
-            logger.info("💀 Reaper received shutdown signal. Stopping...")
+            logger.info("Reaper received shutdown signal. Stopping...")
             shutdown_event.set()
 
         for sig in (signal.SIGTERM, signal.SIGINT):
@@ -52,7 +47,7 @@ class ReaperRunner:
                 )
 
                 if tasks:
-                    logger.info(f"💀 Reaper reclaimed {len(tasks)} zombie tasks.")
+                    logger.info(f"Reaper reclaimed {len(tasks)} zombie tasks.")
                     for stream_id, task in tasks:
                         if shutdown_event.is_set():
                              logger.info("Reaper shutdown pending, waiting for next cycle...")
@@ -75,10 +70,10 @@ class ReaperRunner:
                 except asyncio.TimeoutError:
                     pass
         
-        logger.info("💀 Reaper shutdown complete.")
+        logger.info("Reaper shutdown complete.")
 
 if __name__ == "__main__":
     from src.shared.logger import configure_logging
     configure_logging()
-    reaper = ReaperRunner(check_interval_seconds=10, min_idle_seconds=60) # Fast settings for demo
+    reaper = ReaperRunner()
     asyncio.run(reaper.run())

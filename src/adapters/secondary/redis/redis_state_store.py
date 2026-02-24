@@ -1,7 +1,11 @@
 import json
+
 import redis.asyncio as redis
+
 from src.domain.workflow.value_objects.node_status import NodeStatus
 from src.ports.secondary.state_store import IStateStore
+from src.shared.config import settings
+
 
 class RedisStateStore(IStateStore):
     def __init__(self, redis_client: redis.Redis):
@@ -57,14 +61,15 @@ class RedisStateStore(IStateStore):
             result[key] = json.loads(val)
         return result
 
-    async def acquire_lock(self, key: str, ttl_seconds: int = 30) -> bool:
-        return await self._redis.set(f"lock:{key}", "1", nx=True, ex=ttl_seconds)
+    async def acquire_lock(self, key: str, ttl_seconds: int | None = None) -> bool:
+        ttl = ttl_seconds if ttl_seconds is not None else settings.LOCK_TTL_SECONDS
+        return await self._redis.set(f"lock:{key}", "1", nx=True, ex=ttl)
 
     async def release_lock(self, key: str) -> None:
         await self._redis.delete(f"lock:{key}")
 
     async def set_execution_metadata(self, execution_id: str, metadata: dict) -> None:
-        await self._redis.set(self._execution_metadata_key(execution_id), json.dumps(metadata), ex=86400)
+        await self._redis.set(self._execution_metadata_key(execution_id), json.dumps(metadata), ex=settings.EXECUTION_METADATA_TTL_SECONDS)
 
     async def get_execution_metadata(self, execution_id: str) -> dict | None:
         value = await self._redis.get(self._execution_metadata_key(execution_id))
@@ -74,7 +79,7 @@ class RedisStateStore(IStateStore):
         return None
 
     async def set_execution_status(self, execution_id: str, status: NodeStatus) -> None:
-        await self._redis.set(self._execution_status_key(execution_id), status.value, ex=86400)
+        await self._redis.set(self._execution_status_key(execution_id), status.value, ex=settings.EXECUTION_METADATA_TTL_SECONDS)
 
     async def get_execution_status(self, execution_id: str) -> NodeStatus | None:
         value = await self._redis.get(self._execution_status_key(execution_id))

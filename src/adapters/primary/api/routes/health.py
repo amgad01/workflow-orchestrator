@@ -1,18 +1,18 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, status
-from src.shared.redis_client import redis_client
+
+from fastapi import APIRouter, Response, status
+from sqlalchemy import text
+
+from src.shared.config import settings
 from src.shared.database import engine
-from sqlalchemy import select, text
 from src.shared.logger import get_logger
+from src.shared.redis_client import redis_client
 
 logger = get_logger(__name__)
 router = APIRouter(tags=["Health"])
 
 @router.get("/health")
-async def health_check():
-    """
-    Health check endpoint that verifies connectivity to downstream dependencies.
-    """
+async def health_check(response: Response):
     dependencies = {
         "redis": "unknown",
         "postgres": "unknown"
@@ -36,11 +36,12 @@ async def health_check():
         dependencies["postgres"] = "unhealthy"
         healthy = False
         
-    status_code = status.HTTP_200_OK if healthy else status.HTTP_503_SERVICE_UNAVAILABLE
-    
+    if not healthy:
+        response.status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+
     return {
         "status": "healthy" if healthy else "degraded",
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": "1.0.0",
+        "version": settings.APP_VERSION,
         "dependencies": dependencies
     }

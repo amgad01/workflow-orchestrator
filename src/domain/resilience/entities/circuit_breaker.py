@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
 
 
 class CircuitState(Enum):
@@ -15,15 +14,16 @@ class CircuitBreaker:
     name: str
     failure_threshold: int = 5
     reset_timeout_seconds: int = 60
+    half_open_max_calls: int = 2
     state: CircuitState = CircuitState.CLOSED
     failure_count: int = 0
-    last_failure_time: Optional[datetime] = None
+    last_failure_time: datetime | None = None
     success_count_in_half_open: int = 0
 
     def record_success(self) -> None:
         if self.state == CircuitState.HALF_OPEN:
             self.success_count_in_half_open += 1
-            if self.success_count_in_half_open >= 2:
+            if self.success_count_in_half_open >= self.half_open_max_calls:
                 self._close()
         elif self.state == CircuitState.CLOSED:
             self.failure_count = 0

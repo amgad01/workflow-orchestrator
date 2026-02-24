@@ -7,23 +7,16 @@ from src.ports.secondary.message_broker import (
     IMessageBroker,
     TaskMessage,
 )
+from src.shared.config import settings
 
 
 class RedisMessageBroker(IMessageBroker):
-    """
-    Redis Streams implementation of the Message Broker port.
-    
-    This adapter enables event-driven communication between the Orchestrator and Workers.
-    
-    Key Features:
-    - Persistence: Uses Redis Streams (not Pub/Sub) so messages are persisted until acknowledged.
-    - Consumer Groups: Supports competing consumers pattern for load balancing and fault tolerance.
-    - At-Least-Once Delivery: Messages remain in the Pending Entry List (PEL) until ACKed.
-    """
-    TASK_STREAM = "workflow:tasks"
-    COMPLETION_STREAM = "workflow:completions"
-    TASK_GROUP = "task-workers"
-    COMPLETION_GROUP = "orchestrators"
+    """Redis Streams implementation supporting consumer groups and at-least-once delivery."""
+
+    TASK_STREAM = settings.STREAM_TASK_KEY
+    COMPLETION_STREAM = settings.STREAM_COMPLETION_KEY
+    TASK_GROUP = settings.STREAM_TASK_GROUP
+    COMPLETION_GROUP = settings.STREAM_COMPLETION_GROUP
 
     def __init__(self, redis_client: redis.Redis):
         self._redis = redis_client
@@ -34,7 +27,7 @@ class RedisMessageBroker(IMessageBroker):
             (self.COMPLETION_STREAM, self.COMPLETION_GROUP),
         ]:
             try:
-                await self._redis.xgroup_create(stream, group, id="0", mkstream=True)
+                await self._redis.xgroup_create(stream, group, id="0", mkstream=True)  # noqa: B007
             except redis.ResponseError as e:
                 if "BUSYGROUP" not in str(e):
                     raise
@@ -85,7 +78,7 @@ class RedisMessageBroker(IMessageBroker):
 
         tasks = []
         if messages:
-            for stream, stream_messages in messages:
+            for _stream, stream_messages in messages:
                 for message_id, data in stream_messages:
                     tasks.append(TaskMessage(
                         id=data["id"],
@@ -93,7 +86,7 @@ class RedisMessageBroker(IMessageBroker):
                         node_id=data["node_id"],
                         handler=data["handler"],
                         config=json.loads(data["config"]),
-                        stream_id=message_id,  # Populate stream_id
+                        stream_id=message_id,
                     ))
         return tasks
 
@@ -116,7 +109,7 @@ class RedisMessageBroker(IMessageBroker):
 
         completions = []
         if messages:
-            for stream, stream_messages in messages:
+            for _stream, stream_messages in messages:
                 for message_id, data in stream_messages:
                     completions.append(CompletionMessage(
                         id=data["id"],
@@ -125,7 +118,7 @@ class RedisMessageBroker(IMessageBroker):
                         success=data["success"] == "1",
                         output=json.loads(data["output"]) if data.get("output") else None,
                         error=data.get("error") or None,
-                        stream_id=message_id,  # Populate stream_id
+                        stream_id=message_id,
                     ))
         return completions
 
@@ -139,21 +132,18 @@ class RedisMessageBroker(IMessageBroker):
         self, consumer_group: str, new_consumer: str, min_idle_ms: int = 300000, count: int = 10
     ) -> list[tuple[str, TaskMessage]]:
         try:
-            # xautoclaim returns (next_start_id, messages, ...) depending on version
             response = await self._redis.xautoclaim(
                 self.TASK_STREAM, consumer_group, new_consumer, min_idle_time=min_idle_ms, start_id="0-0", count=count
             )
             claimed_messages = response[1]
         except redis.ResponseError as e:
             if "NOGROUP" in str(e):
-                # If group doesn't exist, we can't claim anything
                 return []
             raise
 
         tasks = []
         if claimed_messages:
             for message_id, data in claimed_messages:
-                # Ensure we have data (it might be None if message was deleted but still in PEL)
                 if not data:
                     continue
                     
