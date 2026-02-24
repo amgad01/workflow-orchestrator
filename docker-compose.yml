@@ -6,6 +6,8 @@ services:
       - "8000:8000"
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://workflow:workflow@postgres:5432/workflow
       - REDIS_URL=redis://redis:6379/0
@@ -25,6 +27,8 @@ services:
     command: python -m src.worker
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://workflow:workflow@postgres:5432/workflow
       - REDIS_URL=redis://redis:6379/0
@@ -47,6 +51,8 @@ services:
     command: python -m src.orchestrator
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://workflow:workflow@postgres:5432/workflow
       - REDIS_URL=redis://redis:6379/0
@@ -68,6 +74,8 @@ services:
     command: python -m src.adapters.secondary.workers.reaper
     volumes:
       - .:/app
+    env_file:
+      - .env
     environment:
       - DATABASE_URL=postgresql+asyncpg://workflow:workflow@postgres:5432/workflow
       - REDIS_URL=redis://redis:6379/0
