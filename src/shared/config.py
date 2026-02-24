@@ -3,48 +3,99 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    # Database configuration
+    # === Application ===
+    APP_NAME: str = "Workflow Orchestrator"
+    APP_VERSION: str = "1.0.0"
+
+    # === Database ===
     database_url: str = "postgresql+asyncpg://workflow:workflow@localhost:5432/workflow"
-    
-    # Redis configuration
+    DB_POOL_SIZE: int = 20
+    DB_MAX_OVERFLOW: int = 10
+    DB_POOL_TIMEOUT: int = 30
+
+    # === Redis ===
     redis_url: str = "redis://localhost:6379/0"
-    
-    # Worker delay configuration (milliseconds)
+
+    # === Worker: batch & polling ===
+    WORKER_BATCH_SIZE: int = 50
+    WORKER_BLOCK_MS: int = 2000
     WORKER_ENABLE_DELAYS: bool = True
+
+    # Worker: simulated delay ranges (milliseconds)
     WORKER_IO_DELAY_MS: int = 100
+    WORKER_INPUT_MIN_MS: int = 50
+    WORKER_INPUT_MAX_MS: int = 150
     WORKER_EXTERNAL_MIN_MS: int = 1000
     WORKER_EXTERNAL_MAX_MS: int = 2000
     WORKER_LLM_MIN_MS: int = 1500
     WORKER_LLM_MAX_MS: int = 2500
-    
-    # Concurrency control
-    MAX_CONCURRENT_DB_OPERATIONS: int = 50
-    
-    # Message broker batch configuration
+    WORKER_DECISION_MIN_MS: int = 10
+    WORKER_DECISION_MAX_MS: int = 50
+
+    # Worker: handler fallback defaults
+    WORKER_DEFAULT_EXTERNAL_URL: str = "http://example.com/api"
+    WORKER_DEFAULT_LLM_MODEL: str = "gpt-4"
+    WORKER_DEFAULT_LLM_TEMPERATURE: float = 0.7
+    WORKER_DEFAULT_LLM_MAX_TOKENS: int = 1000
+
+    # Worker: retry / backoff
+    WORKER_MAX_RETRIES: int = 3
+    WORKER_BACKOFF_BASE_SECONDS: float = 1.0
+    WORKER_BACKOFF_MAX_SECONDS: float = 30.0
+    WORKER_BACKOFF_JITTER_MAX: float = 0.5
+    WORKER_IDEMPOTENCY_TTL_SECONDS: int = 86400
+
+    # === Orchestrator ===
     ORCHESTRATOR_BATCH_SIZE: int = 100
     ORCHESTRATOR_BLOCK_MS: int = 2000
-    WORKER_BATCH_SIZE: int = 50
-    WORKER_BLOCK_MS: int = 2000
+    ORCHESTRATOR_TIMEOUT_CHECK_INTERVAL_SECONDS: float = 1.0
 
-    # Rate Limiting
+    # === Reaper ===
+    REAPER_CHECK_INTERVAL_SECONDS: int = 60
+    REAPER_MIN_IDLE_SECONDS: int = 300
+    REAPER_BATCH_SIZE: int = 10
+
+    # === Distributed Lock ===
+    LOCK_TTL_SECONDS: int = 30
+
+    # === Workflow ===
+    EXECUTION_METADATA_TTL_SECONDS: int = 86400
+
+    # === Redis Streams ===
+    STREAM_TASK_KEY: str = "workflow:tasks"
+    STREAM_COMPLETION_KEY: str = "workflow:completions"
+    STREAM_DLQ_KEY: str = "workflow:dlq"
+    STREAM_DLQ_INDEX_KEY: str = "workflow:dlq:index"
+    STREAM_TASK_GROUP: str = "task_workers"
+    STREAM_COMPLETION_GROUP: str = "orchestrators"
+    STREAM_MAX_LEN: int = 10000
+
+    # === Rate Limiting ===
     RATE_LIMIT_REQUESTS_PER_MINUTE: int = 300
     RATE_LIMIT_BURST_SIZE: int = 10
     RATE_LIMIT_ENABLED: bool = True
 
-    # Circuit Breaker
+    # === Circuit Breaker ===
     CIRCUIT_BREAKER_FAILURE_THRESHOLD: int = 5
     CIRCUIT_BREAKER_RESET_TIMEOUT_SECONDS: int = 60
+    CIRCUIT_BREAKER_HALF_OPEN_MAX_CALLS: int = 2
     CIRCUIT_BREAKER_ENABLED: bool = True
 
-    # Dead Letter Queue
+    # === Worker: error loop pause ===
+    WORKER_ERROR_PAUSE_SECONDS: float = 1.0
+
+    # === Dead Letter Queue ===
     DLQ_MAX_RETRIES: int = 3
     DLQ_ENABLED: bool = True
+
+    # === Concurrency ===
+    MAX_CONCURRENT_DB_OPERATIONS: int = 50
 
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
-        extra="ignore"
+        extra="ignore",
     )
 
     @field_validator("RATE_LIMIT_REQUESTS_PER_MINUTE")
