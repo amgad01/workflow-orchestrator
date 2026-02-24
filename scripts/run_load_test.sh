@@ -1,5 +1,5 @@
 #!/bin/bash
-# Applied AI Challenge: Load Test Orchestrator
+# Workflow Orchestrator: Load Test Runner
 # Ensures the environment is ready and triggers the load test logic.
 
 set -e
@@ -11,7 +11,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${YELLOW}============================================${NC}"
-echo -e "${YELLOW}  Applied AI Challenge: Load Orchestrator   ${NC}"
+echo -e "${YELLOW}  Workflow Orchestrator: Load Test Runner    ${NC}"
 echo -e "${YELLOW}  Target: $BASE_URL                         ${NC}"
 echo -e "${YELLOW}============================================${NC}"
 

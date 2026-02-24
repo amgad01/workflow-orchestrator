@@ -58,7 +58,7 @@ async def run_workflow(client: httpx.AsyncClient, i: int, semaphore: asyncio.Sem
             return f"EXCEPTION_{type(e).__name__}", 0
 
 async def main():
-    print(f"🚀 Applied AI Challenge: High-Throughput Load Test")
+    print(f"🚀 Workflow Orchestrator: High-Throughput Load Test")
     print(f"Target:      {BASE_URL}")
     print(f"Requests:    {TOTAL_REQUESTS}")
     print(f"Concurrency: {CONCURRENCY}")
