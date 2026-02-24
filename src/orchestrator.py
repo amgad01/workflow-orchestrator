@@ -114,5 +114,6 @@ async def main():
 
 if __name__ == "__main__":
     from src.shared.logger import configure_logging
+
     configure_logging()
     asyncio.run(main())

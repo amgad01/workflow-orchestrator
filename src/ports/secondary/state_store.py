@@ -6,13 +6,14 @@ from src.domain.workflow.value_objects.node_status import NodeStatus
 class IStateStore(ABC):
     """
     Interface for the high-frequency 'Hot Path' state store (Redis).
-    
+
     This component handles:
     1. Ephemeral node status updates (millisecond latency).
     2. Distributed locking for race condition prevention.
     3. Workflow execution metadata for rapid lookups.
     4. Data passing (storing intermediate node outputs).
     """
+
     @abstractmethod
     async def set_execution_metadata(self, execution_id: str, metadata: dict) -> None:
         """Stores immutable metadata (workflow_id, timeouts) for quick access."""

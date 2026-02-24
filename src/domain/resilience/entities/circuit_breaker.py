@@ -79,5 +79,7 @@ class CircuitBreaker:
             "failure_count": self.failure_count,
             "failure_threshold": self.failure_threshold,
             "reset_timeout_seconds": self.reset_timeout_seconds,
-            "last_failure_time": self.last_failure_time.isoformat() if self.last_failure_time else None,
+            "last_failure_time": self.last_failure_time.isoformat()
+            if self.last_failure_time
+            else None,
         }

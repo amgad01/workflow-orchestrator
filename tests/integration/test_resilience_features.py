@@ -3,7 +3,7 @@ Integration tests for resilience features.
 
 Tests cover:
 - Health check endpoint
-- Metrics endpoint  
+- Metrics endpoint
 - Rate limiting
 - Dead Letter Queue endpoints
 - Circuit breaker
@@ -42,18 +42,14 @@ class TestHealthAndMonitoring:
             "src.adapters.primary.api.middleware.rate_limit_middleware.redis_client",
             self.mock_redis,
         )
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.redis_client", self.mock_redis)
 
         self.mock_engine = MagicMock()
         self.mock_conn = AsyncMock()
         self.mock_cm = AsyncMock()
         self.mock_cm.__aenter__.return_value = self.mock_conn
         self.mock_engine.connect.return_value = self.mock_cm
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.engine", self.mock_engine
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.engine", self.mock_engine)
 
         self.app = app
         self.transport = ASGITransport(app=self.app)
@@ -61,9 +57,7 @@ class TestHealthAndMonitoring:
     @pytest.fixture
     async def client(self):
         """Create async HTTP client for testing."""
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             yield client
 
     async def test_health_check_returns_healthy(self, client: AsyncClient):
@@ -74,9 +68,7 @@ class TestHealthAndMonitoring:
         data = response.json()
         assert data["status"] == "healthy"
 
-    async def test_metrics_endpoint_returns_prometheus_format(
-        self, client: AsyncClient
-    ):
+    async def test_metrics_endpoint_returns_prometheus_format(self, client: AsyncClient):
         """Metrics endpoint should return Prometheus-compatible format."""
         response = await client.get("/metrics")
 
@@ -106,18 +98,14 @@ class TestRateLimiting:
             "src.adapters.primary.api.middleware.rate_limit_middleware.redis_client",
             self.mock_redis,
         )
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.redis_client", self.mock_redis)
 
         self.mock_engine = MagicMock()
         self.mock_conn = AsyncMock()
         self.mock_cm = AsyncMock()
         self.mock_cm.__aenter__.return_value = self.mock_conn
         self.mock_engine.connect.return_value = self.mock_cm
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.engine", self.mock_engine
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.engine", self.mock_engine)
 
         self.app = app
         self.transport = ASGITransport(app=self.app)
@@ -125,17 +113,11 @@ class TestRateLimiting:
     @pytest.fixture
     async def client(self):
         """Create async HTTP client for testing."""
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             yield client
 
-    @patch(
-        "src.adapters.secondary.redis.redis_rate_limiter.RedisRateLimiter.check_rate_limit"
-    )
-    async def test_returns_429_when_rate_limited(
-        self, mock_check, client: AsyncClient
-    ):
+    @patch("src.adapters.secondary.redis.redis_rate_limiter.RedisRateLimiter.check_rate_limit")
+    async def test_returns_429_when_rate_limited(self, mock_check, client: AsyncClient):
         """Requests exceeding rate limit should receive 429 with Retry-After header."""
         from src.domain.resilience.value_objects.rate_limit_result import RateLimitResult
 
@@ -175,15 +157,14 @@ class TestDeadLetterQueue:
             "src.adapters.primary.api.middleware.rate_limit_middleware.redis_client",
             self.mock_redis,
         )
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.redis_client", self.mock_redis)
 
         # Mock DLQ repository using FastAPI dependency override
         self.mock_dlq_repo = AsyncMock()
         self.mock_broker = AsyncMock()
-        
+
         from src.adapters.primary.api.dlq_routes import get_dlq_repository
+
         app.dependency_overrides[get_dlq_repository] = lambda: self.mock_dlq_repo
 
         self.mock_engine = MagicMock()
@@ -191,23 +172,19 @@ class TestDeadLetterQueue:
         self.mock_cm = AsyncMock()
         self.mock_cm.__aenter__.return_value = self.mock_conn
         self.mock_engine.connect.return_value = self.mock_cm
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.engine", self.mock_engine
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.engine", self.mock_engine)
 
         self.app = app
         self.transport = ASGITransport(app=self.app)
-        
+
         yield
-        
+
         app.dependency_overrides.clear()
 
     @pytest.fixture
     async def client(self):
         """Create async HTTP client for testing."""
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             yield client
 
     async def test_list_dlq_returns_empty_when_no_entries(self, client: AsyncClient):
@@ -244,17 +221,11 @@ class TestCircuitBreaker:
     @pytest.fixture
     async def client(self):
         """Create async HTTP client for testing."""
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             yield client
 
-    @patch(
-        "src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute"
-    )
-    async def test_workflow_with_external_service_handler(
-        self, mock_submit, client: AsyncClient
-    ):
+    @patch("src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute")
+    async def test_workflow_with_external_service_handler(self, mock_submit, client: AsyncClient):
         """Workflow with external service handler should be accepted."""
         mock_submit.return_value = ("wf-1", "ex-1")
 

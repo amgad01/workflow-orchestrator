@@ -19,13 +19,13 @@ class TestRedisRateLimiter:
     @pytest.mark.asyncio
     async def test_rate_limit_allows_under_threshold(self, rate_limiter, mock_redis):
         mock_redis.incr.return_value = 5
-        
+
         result = await rate_limiter.check_rate_limit(
             key="test_user",
             limit=10,
             window_seconds=60,
         )
-        
+
         assert result.allowed is True
         assert result.remaining == 5
         assert result.limit == 10
@@ -33,13 +33,13 @@ class TestRedisRateLimiter:
     @pytest.mark.asyncio
     async def test_rate_limit_blocks_over_threshold(self, rate_limiter, mock_redis):
         mock_redis.incr.return_value = 11
-        
+
         result = await rate_limiter.check_rate_limit(
             key="test_user",
             limit=10,
             window_seconds=60,
         )
-        
+
         assert result.allowed is False
         assert result.remaining == 0
         assert result.retry_after_seconds is not None
@@ -47,26 +47,26 @@ class TestRedisRateLimiter:
     @pytest.mark.asyncio
     async def test_rate_limit_exact_at_threshold(self, rate_limiter, mock_redis):
         mock_redis.incr.return_value = 10
-        
+
         result = await rate_limiter.check_rate_limit(
             key="test_user",
             limit=10,
             window_seconds=60,
         )
-        
+
         assert result.allowed is True
         assert result.remaining == 0
 
     @pytest.mark.asyncio
     async def test_sets_expire_on_first_request(self, rate_limiter, mock_redis):
         mock_redis.incr.return_value = 1
-        
+
         await rate_limiter.check_rate_limit(
             key="test_user",
             limit=10,
             window_seconds=60,
         )
-        
+
         mock_redis.expire.assert_called_once()
 
 
@@ -78,7 +78,7 @@ class TestRateLimitResult:
             limit=10,
             reset_at=datetime.now(timezone.utc) + timedelta(seconds=30),
         )
-        
+
         assert result.retry_after_seconds is None
 
     def test_retry_after_returns_seconds_when_blocked(self):
@@ -88,7 +88,7 @@ class TestRateLimitResult:
             limit=10,
             reset_at=datetime.now(timezone.utc) + timedelta(seconds=30),
         )
-        
+
         retry_after = result.retry_after_seconds
         assert retry_after is not None
         assert 25 <= retry_after <= 30  # Allow some tolerance
@@ -100,5 +100,5 @@ class TestRateLimitResult:
             limit=10,
             reset_at=None,
         )
-        
+
         assert result.retry_after_seconds is None

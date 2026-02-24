@@ -80,14 +80,16 @@ class RedisMessageBroker(IMessageBroker):
         if messages:
             for _stream, stream_messages in messages:
                 for message_id, data in stream_messages:
-                    tasks.append(TaskMessage(
-                        id=data["id"],
-                        execution_id=data["execution_id"],
-                        node_id=data["node_id"],
-                        handler=data["handler"],
-                        config=json.loads(data["config"]),
-                        stream_id=message_id,
-                    ))
+                    tasks.append(
+                        TaskMessage(
+                            id=data["id"],
+                            execution_id=data["execution_id"],
+                            node_id=data["node_id"],
+                            handler=data["handler"],
+                            config=json.loads(data["config"]),
+                            stream_id=message_id,
+                        )
+                    )
         return tasks
 
     async def consume_completions(
@@ -111,15 +113,17 @@ class RedisMessageBroker(IMessageBroker):
         if messages:
             for _stream, stream_messages in messages:
                 for message_id, data in stream_messages:
-                    completions.append(CompletionMessage(
-                        id=data["id"],
-                        execution_id=data["execution_id"],
-                        node_id=data["node_id"],
-                        success=data["success"] == "1",
-                        output=json.loads(data["output"]) if data.get("output") else None,
-                        error=data.get("error") or None,
-                        stream_id=message_id,
-                    ))
+                    completions.append(
+                        CompletionMessage(
+                            id=data["id"],
+                            execution_id=data["execution_id"],
+                            node_id=data["node_id"],
+                            success=data["success"] == "1",
+                            output=json.loads(data["output"]) if data.get("output") else None,
+                            error=data.get("error") or None,
+                            stream_id=message_id,
+                        )
+                    )
         return completions
 
     async def acknowledge_task(self, message_id: str) -> None:
@@ -133,7 +137,12 @@ class RedisMessageBroker(IMessageBroker):
     ) -> list[tuple[str, TaskMessage]]:
         try:
             response = await self._redis.xautoclaim(
-                self.TASK_STREAM, consumer_group, new_consumer, min_idle_time=min_idle_ms, start_id="0-0", count=count
+                self.TASK_STREAM,
+                consumer_group,
+                new_consumer,
+                min_idle_time=min_idle_ms,
+                start_id="0-0",
+                count=count,
             )
             claimed_messages = response[1]
         except redis.ResponseError as e:
@@ -146,7 +155,7 @@ class RedisMessageBroker(IMessageBroker):
             for message_id, data in claimed_messages:
                 if not data:
                     continue
-                    
+
                 task = TaskMessage(
                     id=data["id"],
                     execution_id=data["execution_id"],

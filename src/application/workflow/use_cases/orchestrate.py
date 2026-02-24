@@ -101,21 +101,34 @@ class OrchestrateUseCase:
         outputs = await self._state_store.get_all_outputs(execution_id)
         for node_id in pending_nodes:
             dependencies = dag.get_dependencies(node_id)
-            if all(node_statuses.get(dep) in (NodeStatus.COMPLETED, NodeStatus.SKIPPED) for dep in dependencies):
+            if all(
+                node_statuses.get(dep) in (NodeStatus.COMPLETED, NodeStatus.SKIPPED)
+                for dep in dependencies
+            ):
                 lock_key = f"dispatch:{execution_id}:{node_id}"
                 if await self._state_store.acquire_lock(lock_key):
                     try:
                         # Double-check status after lock
-                        current_status = await self._state_store.get_node_status(execution_id, node_id)
+                        current_status = await self._state_store.get_node_status(
+                            execution_id, node_id
+                        )
                         if current_status != NodeStatus.PENDING:
                             continue
 
                         node = dag.nodes[node_id]
                         if not TemplateResolver.evaluate_condition(node.condition, outputs):
-                            await self._state_store.set_node_status(execution_id, node_id, NodeStatus.SKIPPED)
-                            await self._message_broker.publish_completion(CompletionMessage(
-                                id=f"{execution_id}:{node_id}", execution_id=execution_id, node_id=node_id, success=True, output=None
-                            ))
+                            await self._state_store.set_node_status(
+                                execution_id, node_id, NodeStatus.SKIPPED
+                            )
+                            await self._message_broker.publish_completion(
+                                CompletionMessage(
+                                    id=f"{execution_id}:{node_id}",
+                                    execution_id=execution_id,
+                                    node_id=node_id,
+                                    success=True,
+                                    output=None,
+                                )
+                            )
                             continue
 
                         task = TaskMessage(
@@ -125,7 +138,9 @@ class OrchestrateUseCase:
                             handler=node.handler,
                             config=TemplateResolver.resolve_config(node.config, outputs),
                         )
-                        await self._state_store.set_node_status(execution_id, node_id, NodeStatus.RUNNING)
+                        await self._state_store.set_node_status(
+                            execution_id, node_id, NodeStatus.RUNNING
+                        )
                         await self._message_broker.publish_task(task)
                     finally:
                         await self._state_store.release_lock(lock_key)
@@ -138,18 +153,24 @@ class OrchestrateUseCase:
     async def _check_timeout(self, execution) -> bool:
         if execution.status in (NodeStatus.COMPLETED, NodeStatus.FAILED, NodeStatus.CANCELLED):
             return False
-        
+
         if execution.timeout_seconds and execution.started_at:
             now = datetime.now(timezone.utc)
             elapsed = (now - execution.started_at).total_seconds()
-            
+
             if elapsed > execution.timeout_seconds:
-                logger.warning(f"Workflow {execution.id} timed out: {elapsed}s > {execution.timeout_seconds}s")
-                await self._fail_execution(execution, f"Workflow timed out after {execution.timeout_seconds}s")
+                logger.warning(
+                    f"Workflow {execution.id} timed out: {elapsed}s > {execution.timeout_seconds}s"
+                )
+                await self._fail_execution(
+                    execution, f"Workflow timed out after {execution.timeout_seconds}s"
+                )
                 return True
             else:
-                logger.debug(f"Workflow {execution.id} within timeout: {elapsed}s <= {execution.timeout_seconds}s")
-        
+                logger.debug(
+                    f"Workflow {execution.id} within timeout: {elapsed}s <= {execution.timeout_seconds}s"
+                )
+
         return False
 
     async def _fail_execution(self, execution, error_message: str) -> None:
@@ -160,7 +181,7 @@ class OrchestrateUseCase:
         if execution.started_at and self._metrics:
             duration = (datetime.now(timezone.utc) - execution.started_at).total_seconds()
             self._metrics.record_workflow_completion(execution.workflow_id, "FAILED", duration)
-        
+
         node_statuses = await self._state_store.get_all_node_statuses(execution.id)
         for node_id, status in node_statuses.items():
             if status in (NodeStatus.PENDING, NodeStatus.RUNNING):

@@ -10,15 +10,13 @@ class RedisRateLimiter(IRateLimiter):
     def __init__(self, redis_client: redis.Redis):
         self._redis = redis_client
 
-    async def check_rate_limit(
-        self, key: str, limit: int, window_seconds: int
-    ) -> RateLimitResult:
+    async def check_rate_limit(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
         now = datetime.now(timezone.utc)
         window_start = int(now.timestamp()) // window_seconds * window_seconds
         redis_key = f"rate_limit:{key}:{window_start}"
 
         current_count = await self._redis.incr(redis_key)
-        
+
         if current_count == 1:
             await self._redis.expire(redis_key, window_seconds)
 

@@ -25,6 +25,7 @@ class CompletionMessage:
 
 class IMessageBroker(ABC):
     """Interface for the event bus / message queue (e.g. Redis Streams)."""
+
     @abstractmethod
     async def publish_task(self, task: TaskMessage) -> str:
         pass

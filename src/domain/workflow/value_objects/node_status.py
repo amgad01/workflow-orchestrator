@@ -13,6 +13,7 @@ class NodeStatus(str, Enum):
         CANCELLED: Execution was manually stopped.
         SKIPPED: Condition evaluated to false.
     """
+
     PENDING = "PENDING"
     RUNNING = "RUNNING"
     COMPLETED = "COMPLETED"

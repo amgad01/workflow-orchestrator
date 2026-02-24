@@ -110,5 +110,6 @@ try:
     settings = Settings()
 except Exception as e:
     import sys
+
     print(f"CRITICAL: Configuration validation failed: {e}")
     sys.exit(1)

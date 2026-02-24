@@ -15,10 +15,11 @@ class TemplateVariable:
 class TemplateResolver:
     """
     Handles variable substitution and dynamic configuration.
-    
+
     This component allows data passing between nodes by resolving placeholders
     like {{ node_id.output_key }} into actual values from the execution state.
     """
+
     PATTERN = re.compile(r"\{\{\s*(\w+)\.(\w+)\s*\}\}")
 
     @classmethod
@@ -49,29 +50,29 @@ class TemplateResolver:
     def evaluate_condition(cls, condition: str | None, outputs: dict[str, dict]) -> bool:
         if not condition:
             return True
-            
+
         resolved = cls.resolve(condition, outputs).strip()
-        
+
         if "==" in resolved:
             parts = resolved.split("==")
             return parts[0].strip("'\" ") == parts[1].strip("'\" ")
         if "!=" in resolved:
             parts = resolved.split("!=")
             return parts[0].strip("'\" ") != parts[1].strip("'\" ")
-            
+
         lowered = resolved.lower()
         if lowered in ("true", "1", "yes"):
             return True
         if lowered in ("false", "0", "no"):
             return False
-        
+
         return bool(resolved)
 
     @classmethod
     def resolve_config(cls, config: dict, outputs: dict[str, dict]) -> dict:
         """
         Recursively resolves templates within a configuration dictionary.
-        
+
         It traverses the entire structure (dicts, lists, strings) and injects
         outputs from upstream nodes where placeholders are found.
         """

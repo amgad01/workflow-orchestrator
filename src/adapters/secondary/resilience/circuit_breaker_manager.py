@@ -16,7 +16,7 @@ T = TypeVar("T")
 
 class CircuitBreakerManager:
     REDIS_KEY_PREFIX = "circuit_breaker:"
-    
+
     def __init__(
         self,
         redis_client: redis.Redis,
@@ -56,7 +56,9 @@ class CircuitBreakerManager:
         state_dict = {
             "state": circuit.state.value,
             "failure_count": circuit.failure_count,
-            "last_failure_time": circuit.last_failure_time.isoformat() if circuit.last_failure_time else None,
+            "last_failure_time": circuit.last_failure_time.isoformat()
+            if circuit.last_failure_time
+            else None,
         }
         await self._redis.set(key, json.dumps(state_dict), ex=self._reset_timeout_seconds * 2)
 
@@ -79,22 +81,26 @@ class CircuitBreakerManager:
             result = await operation()
             circuit.record_success()
             await self._sync_to_redis(circuit)
-            
+
             if circuit.state == CircuitState.CLOSED:
                 logger.debug(f"Circuit '{circuit_name}' request succeeded")
             else:
                 logger.info(f"Circuit '{circuit_name}' transitioning toward CLOSED after success")
-            
+
             return result
         except Exception:
             circuit.record_failure()
             await self._sync_to_redis(circuit)
-            
+
             if circuit.state == CircuitState.OPEN:
-                logger.error(f"Circuit '{circuit_name}' opened after {self._failure_threshold} failures")
+                logger.error(
+                    f"Circuit '{circuit_name}' opened after {self._failure_threshold} failures"
+                )
             else:
-                logger.warning(f"Circuit '{circuit_name}' recorded failure ({circuit.failure_count}/{self._failure_threshold})")
-            
+                logger.warning(
+                    f"Circuit '{circuit_name}' recorded failure ({circuit.failure_count}/{self._failure_threshold})"
+                )
+
             raise
 
     async def get_status(self, circuit_name: str) -> dict:
@@ -106,7 +112,9 @@ class CircuitBreakerManager:
         cursor = 0
         circuits = []
         while True:
-            cursor, keys = await self._redis.scan(cursor, match=f"{self.REDIS_KEY_PREFIX}*", count=100)
+            cursor, keys = await self._redis.scan(
+                cursor, match=f"{self.REDIS_KEY_PREFIX}*", count=100
+            )
             for key in keys:
                 name = key.replace(self.REDIS_KEY_PREFIX, "")
                 circuits.append(await self.get_status(name))

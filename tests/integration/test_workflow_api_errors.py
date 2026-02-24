@@ -18,7 +18,6 @@ from src.shared.config import settings
 
 @pytest.mark.asyncio
 class TestWorkflowApiErrors:
-
     @pytest.fixture(autouse=True)
     async def setup(self, monkeypatch):
         settings.RATE_LIMIT_ENABLED = False
@@ -26,22 +25,16 @@ class TestWorkflowApiErrors:
 
         self.mock_redis = AsyncMock()
         monkeypatch.setattr("src.shared.redis_client.redis_client", self.mock_redis)
-        monkeypatch.setattr(
-            "src.adapters.primary.api.dependencies.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.dependencies.redis_client", self.mock_redis)
         monkeypatch.setattr(
             "src.adapters.primary.api.middleware.rate_limit_middleware.redis_client",
             self.mock_redis,
         )
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.redis_client", self.mock_redis)
         monkeypatch.setattr("src.shared.database.engine", AsyncMock())
 
         self.mock_engine = AsyncMock()
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.engine", self.mock_engine
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.engine", self.mock_engine)
 
         self.mock_session = MagicMock()
         self.mock_session.add = MagicMock()
@@ -70,9 +63,7 @@ class TestWorkflowApiErrors:
     @pytest.fixture
     async def client(self):
         """Create async HTTP client for testing."""
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             yield client
 
     async def test_returns_422_for_missing_required_fields(self, client: AsyncClient):
@@ -80,14 +71,12 @@ class TestWorkflowApiErrors:
         payload = {"name": "No DAG"}
         response = await client.post("/api/v1/workflow", json=payload)
 
-        assert response.status_code == 422 
+        assert response.status_code == 422
 
     @patch(
         "src.application.workflow.use_cases.get_workflow_status.GetWorkflowStatusUseCase.execute"
     )
-    async def test_returns_404_for_non_existent_execution(
-        self, mock_execute, client: AsyncClient
-    ):
+    async def test_returns_404_for_non_existent_execution(self, mock_execute, client: AsyncClient):
         """Requesting status of non-existent execution should return 404."""
         from src.domain.workflow.exceptions import ExecutionNotFoundError
 
@@ -99,9 +88,7 @@ class TestWorkflowApiErrors:
         data = response.json()
         assert data["error"]["error_code"] == "EXECUTION_NOT_FOUND"
 
-    @patch(
-        "src.application.workflow.use_cases.cancel_workflow.CancelWorkflowUseCase.execute"
-    )
+    @patch("src.application.workflow.use_cases.cancel_workflow.CancelWorkflowUseCase.execute")
     async def test_returns_404_for_cancel_non_existent_execution(
         self, mock_cancel, client: AsyncClient
     ):
@@ -115,12 +102,8 @@ class TestWorkflowApiErrors:
         assert response.status_code == 404
         assert response.json()["error"]["error_code"] == "EXECUTION_NOT_FOUND"
 
-    @patch(
-        "src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute"
-    )
-    async def test_accepts_workflow_with_unknown_handler(
-        self, mock_execute, client: AsyncClient
-    ):
+    @patch("src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute")
+    async def test_accepts_workflow_with_unknown_handler(self, mock_execute, client: AsyncClient):
         """
         Workflow with unknown handler is accepted at submission.
 

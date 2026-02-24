@@ -12,6 +12,7 @@ from src.domain.workflow.exceptions import (
 @dataclass(frozen=True)
 class NodeDefinition:
     """Immutable node definition used during DAG validation and traversal."""
+
     id: str
     handler: str
     dependencies: tuple[str, ...]
@@ -24,9 +25,9 @@ class NodeDefinition:
                 raise ValueError(f"Node {self.id}: 'url' must be a string")
         elif self.handler == "call_llm":
             if "prompt" not in self.config:
-                pass 
+                pass
             elif not isinstance(self.config["prompt"], str):
-                 raise ValueError(f"Node {self.id}: 'prompt' must be a string")
+                raise ValueError(f"Node {self.id}: 'prompt' must be a string")
 
 
 @dataclass
@@ -100,15 +101,11 @@ class DAG:
                     queue.append(neighbor)
 
         if visited_count != len(self.nodes):
-            unvisited = [
-                node_id for node_id in self.nodes if in_degree.get(node_id, 0) > 0
-            ]
+            unvisited = [node_id for node_id in self.nodes if in_degree.get(node_id, 0) > 0]
             raise CyclicDependencyError(unvisited)
 
     def get_root_nodes(self) -> list[str]:
-        return [
-            node_id for node_id, node in self.nodes.items() if not node.dependencies
-        ]
+        return [node_id for node_id, node in self.nodes.items() if not node.dependencies]
 
     def get_dependents(self, node_id: str) -> set[str]:
         return self.adjacency.get(node_id, set())

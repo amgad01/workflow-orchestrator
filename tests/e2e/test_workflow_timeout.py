@@ -137,4 +137,6 @@ class TestCircuitBreakerE2E:
             resp = await client.get(f"/api/v1/workflow/{execution_id}")
             # Accept any terminal state as the circuit breaker prevented further execution
             final_status = resp.json()["status"]
-            assert final_status in ["FAILED", "COMPLETED", "ERROR"], f"Expected terminal status but got {final_status}"
+            assert final_status in ["FAILED", "COMPLETED", "ERROR"], (
+                f"Expected terminal status but got {final_status}"
+            )

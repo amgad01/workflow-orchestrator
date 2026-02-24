@@ -18,6 +18,7 @@ class SubmitWorkflowUseCase:
     2. Persist the workflow definition and initial execution record.
     3. Initialize the operational state in Redis (Hot Path) for immediate accessibility.
     """
+
     def __init__(
         self,
         workflow_repository: IWorkflowRepository,
@@ -28,7 +29,9 @@ class SubmitWorkflowUseCase:
         self._execution_repository = execution_repository
         self._state_store = state_store
 
-    async def execute(self, name: str, dag_json: dict, timeout_seconds: float | None = None) -> tuple[str, str]:
+    async def execute(
+        self, name: str, dag_json: dict, timeout_seconds: float | None = None
+    ) -> tuple[str, str]:
         """
         Submits a workflow for execution.
 
@@ -36,7 +39,7 @@ class SubmitWorkflowUseCase:
         1. Parses and Validates the DAG (Cycle Detection).
         2. Persists the workflow definition to PostgreSQL (System of Record).
         3. Initializes the Execution state in Redis (Hot Path).
-        
+
         Args:
             name: Workflow name.
             dag_json: The raw DAG definition.

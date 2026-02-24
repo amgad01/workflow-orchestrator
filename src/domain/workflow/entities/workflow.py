@@ -15,6 +15,7 @@ class Node:
         config (dict): Configuration parameters passed to the handler.
         condition (str | None): Optional conditional expression to evaluate before execution.
     """
+
     id: str
     handler: str
     dependencies: tuple[str, ...]
@@ -33,6 +34,7 @@ class Workflow:
         id (str): Unique identifier (UUID4).
         created_at (datetime): Timestamp when the workflow was submitted.
     """
+
     name: str
     dag_json: dict
     id: str = field(default_factory=lambda: str(uuid4()))

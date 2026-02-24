@@ -69,7 +69,11 @@ class RedisStateStore(IStateStore):
         await self._redis.delete(f"lock:{key}")
 
     async def set_execution_metadata(self, execution_id: str, metadata: dict) -> None:
-        await self._redis.set(self._execution_metadata_key(execution_id), json.dumps(metadata), ex=settings.EXECUTION_METADATA_TTL_SECONDS)
+        await self._redis.set(
+            self._execution_metadata_key(execution_id),
+            json.dumps(metadata),
+            ex=settings.EXECUTION_METADATA_TTL_SECONDS,
+        )
 
     async def get_execution_metadata(self, execution_id: str) -> dict | None:
         value = await self._redis.get(self._execution_metadata_key(execution_id))
@@ -79,7 +83,11 @@ class RedisStateStore(IStateStore):
         return None
 
     async def set_execution_status(self, execution_id: str, status: NodeStatus) -> None:
-        await self._redis.set(self._execution_status_key(execution_id), status.value, ex=settings.EXECUTION_METADATA_TTL_SECONDS)
+        await self._redis.set(
+            self._execution_status_key(execution_id),
+            status.value,
+            ex=settings.EXECUTION_METADATA_TTL_SECONDS,
+        )
 
     async def get_execution_status(self, execution_id: str) -> NodeStatus | None:
         value = await self._redis.get(self._execution_status_key(execution_id))

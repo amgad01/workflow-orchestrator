@@ -6,11 +6,12 @@ from src.domain.workflow.entities.execution import Execution
 class IExecutionRepository(ABC):
     """
     Interface for long-term persistence of Workflow Executions.
-    
+
     This repository manages the 'Cold Path' storage (PostgreSQL), dealing with
     ACID-compliant records of workflow lifecycles, audit trails, and final states.
     It is NOT responsible for high-frequency node state updates (see IStateStore).
     """
+
     @abstractmethod
     async def save(self, execution: Execution) -> None:
         """Persists a new execution record."""

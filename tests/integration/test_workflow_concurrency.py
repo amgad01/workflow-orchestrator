@@ -36,9 +36,7 @@ class TestWorkflowConcurrency:
         self.app = app
         self.transport = ASGITransport(app=self.app)
 
-    @patch(
-        "src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute"
-    )
+    @patch("src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute")
     async def test_handles_concurrent_submissions(self, mock_execute):
         """
         Multiple concurrent workflow submissions should all succeed.
@@ -47,9 +45,7 @@ class TestWorkflowConcurrency:
         """
         mock_execute.return_value = ("wf-1", "ex-1")
 
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             payload = {
                 "name": "Concurrent Workflow",
                 "dag": {"nodes": [{"id": "n1", "handler": "h1"}]},
@@ -62,16 +58,12 @@ class TestWorkflowConcurrency:
                 assert resp.status_code == 201
                 assert "execution_id" in resp.json()
 
-    @patch(
-        "src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute"
-    )
+    @patch("src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute")
     async def test_accepts_single_node_workflow(self, mock_execute):
         """Single node workflow should be accepted and processed."""
         mock_execute.return_value = ("wf-1", "ex-1")
 
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             payload = {
                 "name": "Single Node",
                 "dag": {"nodes": [{"id": "only", "handler": "input"}]},
@@ -80,12 +72,8 @@ class TestWorkflowConcurrency:
 
             assert response.status_code == 201
 
-    @patch(
-        "src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute"
-    )
-    @patch(
-        "src.application.workflow.use_cases.trigger_execution.TriggerExecutionUseCase.execute"
-    )
+    @patch("src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute")
+    @patch("src.application.workflow.use_cases.trigger_execution.TriggerExecutionUseCase.execute")
     async def test_handles_concurrent_triggers(self, mock_trigger, mock_submit):
         """
         Multiple concurrent triggers for same execution should be handled gracefully.
@@ -95,9 +83,7 @@ class TestWorkflowConcurrency:
         mock_submit.return_value = ("wf-1", "ex-1")
         mock_trigger.return_value = None
 
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             payload = {
                 "name": "Parallel Trigger Test",
                 "dag": {"nodes": [{"id": "n1", "handler": "h1"}]},

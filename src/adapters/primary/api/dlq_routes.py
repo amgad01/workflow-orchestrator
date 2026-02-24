@@ -16,6 +16,7 @@ logger = get_logger(__name__)
 API_VERSION = "v1"
 router = APIRouter(prefix=f"/api/{API_VERSION}/admin/dlq", tags=["Admin - Dead Letter Queue"])
 
+
 # Lazy helper since DLQ repo isn't in standard DI
 def get_dlq_repository() -> RedisDLQRepository:
     return RedisDLQRepository(redis_client)
@@ -59,7 +60,7 @@ async def list_dlq_entries(
 ) -> DLQListResponse:
     entries = await dlq_repository.list_entries(limit=limit)
     count = await dlq_repository.count()
-    
+
     return DLQListResponse(
         entries=[
             DLQEntryResponse(
@@ -92,7 +93,7 @@ async def retry_dlq_entry(
     state_store: RedisStateStore = Depends(get_state_store),
 ) -> DLQRetryResponse:
     entry = await dlq_repository.pop(entry_id)
-    
+
     if not entry:
         raise HTTPException(status_code=404, detail=f"DLQ entry {entry_id} not found")
 
@@ -103,21 +104,21 @@ async def retry_dlq_entry(
         handler=entry.handler,
         config=entry.config,
     )
-    
+
     # Reset workflow status to RUNNING in state store (Hot Path)
     await state_store.set_execution_status(entry.execution_id, NodeStatus.RUNNING)
-    
+
     # Also reset the node status to RUNNING
     await state_store.set_node_status(entry.execution_id, entry.node_id, NodeStatus.RUNNING)
-    
+
     await message_broker.publish_task(task)
-    
+
     # Clear the retry counter to give it fresh attempts
     retry_key = f"task_retry:{entry.execution_id}:{entry.node_id}"
     await redis_client.delete(retry_key)
-    
+
     logger.info(f"Retried DLQ entry {entry_id} as task {task.id}, reset status to RUNNING")
-    
+
     return DLQRetryResponse(
         status="success",
         message="Task re-submitted to queue",
@@ -135,10 +136,10 @@ async def delete_dlq_entry(
     dlq_repository: RedisDLQRepository = Depends(get_dlq_repository),
 ):
     deleted = await dlq_repository.delete(entry_id)
-    
+
     if not deleted:
         raise HTTPException(status_code=404, detail=f"DLQ entry {entry_id} not found")
-    
+
     logger.info(f"Deleted DLQ entry {entry_id}")
-    
+
     return {"status": "success", "message": f"DLQ entry {entry_id} deleted"}

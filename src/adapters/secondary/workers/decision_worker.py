@@ -17,18 +17,18 @@ class DecisionWorker(BaseWorker):
         value_b = config.get("value_b")
 
         result = False
-        
+
         if operator == "==":
             result = str(value_a).strip() == str(value_b).strip()
         elif operator == "!=":
             result = str(value_a).strip() != str(value_b).strip()
-        
+
         # Numeric comparisons (try float conversion, fail safe to False)
         elif operator in (">", "<", ">=", "<="):
             try:
                 float_a = float(value_a)
                 float_b = float(value_b)
-                
+
                 if operator == ">":
                     result = float_a > float_b
                 elif operator == "<":

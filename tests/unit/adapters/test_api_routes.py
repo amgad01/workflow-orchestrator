@@ -37,29 +37,38 @@ class TestApiRoutes:
         app.dependency_overrides[get_workflow_status_use_case] = lambda: mock_status
         app.dependency_overrides[get_workflow_results_use_case] = lambda: mock_results
         app.dependency_overrides[get_cancel_workflow_use_case] = lambda: mock_cancel
-        
+
         from src.shared.config import settings
+
         old_rl_enabled = settings.RATE_LIMIT_ENABLED
         old_cb_enabled = settings.CIRCUIT_BREAKER_ENABLED
         settings.RATE_LIMIT_ENABLED = False
         settings.CIRCUIT_BREAKER_ENABLED = False
-        
+
         # Mock Rate Limiter to return allowed
         mock_rl_result = RateLimitResult(allowed=True, remaining=99, limit=100)
         mock_rate_limiter = AsyncMock()
         mock_rate_limiter.check_rate_limit.return_value = mock_rl_result
-        
+
         # Mock the infrastructure to avoid connection errors
         try:
-            with patch("src.main.redis_client", AsyncMock()), \
-                 patch("src.main.engine", AsyncMock()), \
-                 patch("src.shared.redis_client.redis_client", AsyncMock(ping=AsyncMock())), \
-                 patch("src.adapters.primary.api.routes.health.redis_client", AsyncMock(ping=AsyncMock())), \
-                 patch("src.adapters.primary.api.routes.health.engine", MagicMock()), \
-                 patch("src.adapters.primary.api.middleware.rate_limit_middleware.RedisRateLimiter", return_value=mock_rate_limiter):
-                
+            with (
+                patch("src.main.redis_client", AsyncMock()),
+                patch("src.main.engine", AsyncMock()),
+                patch("src.shared.redis_client.redis_client", AsyncMock(ping=AsyncMock())),
+                patch(
+                    "src.adapters.primary.api.routes.health.redis_client",
+                    AsyncMock(ping=AsyncMock()),
+                ),
+                patch("src.adapters.primary.api.routes.health.engine", MagicMock()),
+                patch(
+                    "src.adapters.primary.api.middleware.rate_limit_middleware.RedisRateLimiter",
+                    return_value=mock_rate_limiter,
+                ),
+            ):
                 # Setup health check engine mock
                 import src.adapters.primary.api.routes.health as health_mod
+
                 mock_engine = health_mod.engine
                 mock_conn = AsyncMock()
                 mock_cm = AsyncMock()
@@ -76,15 +85,12 @@ class TestApiRoutes:
 
     def test_submit_workflow_success(self, client, mock_submit):
         mock_submit.execute.return_value = ("wf-123", "exec-456")
-        
+
         response = client.post(
             "/api/v1/workflow",
-            json={
-                "name": "Test Workflow",
-                "dag": {"nodes": [{"id": "n1", "handler": "h1"}]}
-            }
+            json={"name": "Test Workflow", "dag": {"nodes": [{"id": "n1", "handler": "h1"}]}},
         )
-        
+
         assert response.status_code == 201
         assert response.json()["workflow_id"] == "wf-123"
         assert response.json()["execution_id"] == "exec-456"
@@ -94,31 +100,31 @@ class TestApiRoutes:
             "execution_id": "exec-456",
             "workflow_id": "wf-123",
             "status": "RUNNING",
-            "node_statuses": {"n1": "RUNNING"}
+            "node_statuses": {"n1": "RUNNING"},
         }
-        
+
         response = client.get("/api/v1/workflow/exec-456")
-        
+
         assert response.status_code == 200
         assert response.json()["status"] == "RUNNING"
 
     def test_get_workflow_results_success(self, client, mock_results):
         mock_results.execute.return_value = {
-            "execution_id": "exec-456", 
-            "workflow_id": "wf-123", 
-            "outputs": {"n1": {"output": "data"}}
+            "execution_id": "exec-456",
+            "workflow_id": "wf-123",
+            "outputs": {"n1": {"output": "data"}},
         }
-        
+
         response = client.get("/api/v1/workflow/exec-456/results")
-        
+
         assert response.status_code == 200
         assert response.json()["outputs"]["n1"]["output"] == "data"
 
     def test_cancel_workflow_success(self, client, mock_cancel):
         mock_cancel.execute.return_value = None
-        
+
         response = client.delete("/api/v1/workflow/exec-456")
-        
+
         assert response.status_code == 200
         assert "cancelled" in response.json()["message"]
 

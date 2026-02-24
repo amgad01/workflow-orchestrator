@@ -14,7 +14,7 @@ class CancelWorkflowUseCase:
     async def execute(self, execution_id: str) -> None:
         """
         Cancels an active execution.
-        
+
         Logic:
         1. Updates the persisted execution state to CANCELLED (Cold Store).
         2. Syncs the status to Redis (Hot Store) to safeguard against race conditions.
@@ -23,6 +23,7 @@ class CancelWorkflowUseCase:
         execution = await self._execution_repository.get_by_id(execution_id)
         if not execution:
             from src.domain.workflow.exceptions import ExecutionNotFoundError
+
             raise ExecutionNotFoundError(execution_id)
 
         execution.cancel()

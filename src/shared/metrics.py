@@ -7,25 +7,22 @@ class MetricsRegistry(IMetrics):
     """Prometheus metrics registry."""
 
     def __init__(self):
-
         # Workflow metrics
         self.WORKFLOW_SUBMISSIONS_TOTAL = Counter(
-            "workflow_submissions_total",
-            "Total number of workflow submissions",
-            ["workflow_name"]
+            "workflow_submissions_total", "Total number of workflow submissions", ["workflow_name"]
         )
-    
+
         self.WORKFLOW_COMPLETIONS_TOTAL = Counter(
             "workflow_completions_total",
             "Total number of workflow completions",
-            ["workflow_id", "status"]
+            ["workflow_id", "status"],
         )
-        
+
         self.WORKFLOW_DURATION_SECONDS = Histogram(
             "workflow_duration_seconds",
             "Time taken for workflow to complete",
             ["workflow_id"],
-            buckets=(1, 5, 10, 30, 60, 120, 300, 600)
+            buckets=(1, 5, 10, 30, 60, 120, 300, 600),
         )
 
         # API metrics
@@ -33,28 +30,26 @@ class MetricsRegistry(IMetrics):
             "api_request_duration_seconds",
             "Duration of API requests in seconds",
             ["endpoint", "method"],
-            buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 2.5, 5.0)
+            buckets=(0.01, 0.05, 0.1, 0.5, 1.0, 2.5, 5.0),
         )
 
         # Infrastructure metrics
         self.REDIS_STREAM_PENDING_MESSAGES = Gauge(
             "redis_stream_pending_messages",
             "Number of pending messages in Redis streams",
-            ["stream_name", "group_name"]
+            ["stream_name", "group_name"],
         )
 
         # Node metrics
         self.NODE_EXECUTIONS_TOTAL = Counter(
-            "node_executions_total",
-            "Total number of node executions",
-            ["handler", "status"]
+            "node_executions_total", "Total number of node executions", ["handler", "status"]
         )
-        
+
         self.NODE_DURATION_SECONDS = Histogram(
             "node_duration_seconds",
             "Time taken for node to complete",
             ["handler"],
-            buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0)
+            buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0),
         )
 
     def record_submission(self, workflow_name: str):
@@ -73,6 +68,7 @@ class MetricsRegistry(IMetrics):
 
     def update_pending_messages(self, stream: str, group: str, count: int):
         self.REDIS_STREAM_PENDING_MESSAGES.labels(stream_name=stream, group_name=group).set(count)
+
 
 # Global registry instance for adapter/framework layer
 metrics_registry = MetricsRegistry()

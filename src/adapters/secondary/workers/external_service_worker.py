@@ -40,8 +40,7 @@ class ExternalServiceWorker(BaseWorker):
         # Simulate external service call with configurable delay
         if settings.WORKER_ENABLE_DELAYS:
             delay = random.uniform(
-                settings.WORKER_EXTERNAL_MIN_MS / 1000,
-                settings.WORKER_EXTERNAL_MAX_MS / 1000
+                settings.WORKER_EXTERNAL_MIN_MS / 1000, settings.WORKER_EXTERNAL_MAX_MS / 1000
             )
             await asyncio.sleep(delay)
 

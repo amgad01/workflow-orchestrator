@@ -26,9 +26,11 @@ logger = get_logger(__name__)
 
 shutdown_event = asyncio.Event()
 
+
 def signal_handler():
     logger.info("shutdown_signal_received")
     shutdown_event.set()
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

@@ -1,4 +1,3 @@
-
 import pytest
 
 from src.adapters.secondary.workers.external_service_worker import ExternalServiceWorker
@@ -14,14 +13,15 @@ async def test_external_service_worker_success():
         execution_id="exec-1",
         node_id="node-1",
         handler="call_external_service",
-        config={"url": "http://example.com"}
+        config={"url": "http://example.com"},
     )
-    
+
     result = await worker.process(task)
-    
+
     assert result["status_code"] == 200
     assert "url" in result
     assert result["url"] == "http://example.com"
+
 
 @pytest.mark.asyncio
 async def test_external_service_worker_failure():
@@ -31,13 +31,14 @@ async def test_external_service_worker_failure():
         execution_id="exec-1",
         node_id="node-1",
         handler="call_external_service",
-        config={"url": "http://example.com", "simulate_failure": True}
+        config={"url": "http://example.com", "simulate_failure": True},
     )
-    
+
     with pytest.raises(Exception) as exc_info:
         await worker.process(task)
-    
+
     assert "Simulated failure" in str(exc_info.value)
+
 
 @pytest.mark.asyncio
 async def test_llm_service_worker_success():
@@ -47,39 +48,39 @@ async def test_llm_service_worker_success():
         execution_id="exec-1",
         node_id="node-2",
         handler="call_llm",
-        config={"prompt": "Hello", "model": "gpt-4"}
+        config={"prompt": "Hello", "model": "gpt-4"},
     )
-    
+
     result = await worker.process(task)
-    
+
     assert "response" in result
     assert result["model"] == "gpt-4"
+
 
 @pytest.mark.asyncio
 async def test_input_worker():
     from src.adapters.secondary.workers.io_workers import InputWorker
+
     worker = InputWorker()
     task = TaskMessage(
-        id="task-3",
-        execution_id="exec-1",
-        node_id="node-3",
-        handler="input",
-        config={"key": "val"}
+        id="task-3", execution_id="exec-1", node_id="node-3", handler="input", config={"key": "val"}
     )
     result = await worker.process(task)
     assert result["initialized"] is True
     assert result["key"] == "val"
 
+
 @pytest.mark.asyncio
 async def test_output_worker():
     from src.adapters.secondary.workers.io_workers import OutputWorker
+
     worker = OutputWorker()
     task = TaskMessage(
         id="task-4",
         execution_id="exec-1",
         node_id="node-4",
         handler="output",
-        config={"final": "data"}
+        config={"final": "data"},
     )
     result = await worker.process(task)
     assert result["aggregated"] is True

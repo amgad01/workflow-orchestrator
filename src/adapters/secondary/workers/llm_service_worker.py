@@ -15,8 +15,7 @@ class LLMServiceWorker(BaseWorker):
         # Simulate LLM API call with configurable delay
         if settings.WORKER_ENABLE_DELAYS:
             delay = random.uniform(
-                settings.WORKER_LLM_MIN_MS / 1000,
-                settings.WORKER_LLM_MAX_MS / 1000
+                settings.WORKER_LLM_MIN_MS / 1000, settings.WORKER_LLM_MAX_MS / 1000
             )
             await asyncio.sleep(delay)
 

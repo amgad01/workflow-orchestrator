@@ -29,6 +29,7 @@ class NodeExecution:
 @dataclass
 class Execution:
     """Aggregate root for a single workflow run. Manages node lifecycle and status transitions."""
+
     workflow_id: str
     id: str = field(default_factory=lambda: str(uuid4()))
     status: NodeStatus = NodeStatus.PENDING
@@ -67,19 +68,13 @@ class Execution:
         """True if node is PENDING and all dependencies are COMPLETED."""
         if self.get_node_status(node_id) != NodeStatus.PENDING:
             return False
-        return all(
-            self.get_node_status(dep) == NodeStatus.COMPLETED for dep in dependencies
-        )
+        return all(self.get_node_status(dep) == NodeStatus.COMPLETED for dep in dependencies)
 
     def all_nodes_complete(self) -> bool:
-        return all(
-            node.status == NodeStatus.COMPLETED for node in self.node_states.values()
-        )
+        return all(node.status == NodeStatus.COMPLETED for node in self.node_states.values())
 
     def has_failed(self) -> bool:
-        return any(
-            node.status == NodeStatus.FAILED for node in self.node_states.values()
-        )
+        return any(node.status == NodeStatus.FAILED for node in self.node_states.values())
 
     def get_outputs(self) -> dict[str, dict]:
         return {

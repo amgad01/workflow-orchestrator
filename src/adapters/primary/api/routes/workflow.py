@@ -48,16 +48,16 @@ async def submit_workflow(
         dag_json=request.dag,
         timeout_seconds=request.timeout_seconds,
     )
-    
+
     metrics_registry.record_submission(request.name)
-    
+
     logger.info(
         "workflow_submitted",
         workflow_id=workflow_id,
         execution_id=execution_id,
-        workflow_name=request.name
+        workflow_name=request.name,
     )
-    
+
     return WorkflowSubmitResponse(
         workflow_id=workflow_id,
         execution_id=execution_id,
@@ -80,7 +80,7 @@ async def trigger_execution(
         execution_id=execution_id,
         params=request.params,
     )
-    
+
     logger.info("workflow_triggered", execution_id=execution_id)
     return WorkflowTriggerResponse(execution_id=execution_id)
 

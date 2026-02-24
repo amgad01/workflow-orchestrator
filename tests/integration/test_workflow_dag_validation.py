@@ -31,22 +31,16 @@ class TestWorkflowDagValidation:
 
         self.mock_redis = AsyncMock()
         monkeypatch.setattr("src.shared.redis_client.redis_client", self.mock_redis)
-        monkeypatch.setattr(
-            "src.adapters.primary.api.dependencies.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.dependencies.redis_client", self.mock_redis)
         monkeypatch.setattr(
             "src.adapters.primary.api.middleware.rate_limit_middleware.redis_client",
             self.mock_redis,
         )
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.redis_client", self.mock_redis
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.redis_client", self.mock_redis)
         monkeypatch.setattr("src.shared.database.engine", AsyncMock())
 
         self.mock_engine = AsyncMock()
-        monkeypatch.setattr(
-            "src.adapters.primary.api.routes.health.engine", self.mock_engine
-        )
+        monkeypatch.setattr("src.adapters.primary.api.routes.health.engine", self.mock_engine)
 
         self.mock_session = MagicMock()
         self.mock_session.add = MagicMock()
@@ -75,9 +69,7 @@ class TestWorkflowDagValidation:
     @pytest.fixture
     async def client(self):
         """Create async HTTP client for testing."""
-        async with AsyncClient(
-            transport=self.transport, base_url="http://test"
-        ) as client:
+        async with AsyncClient(transport=self.transport, base_url="http://test") as client:
             yield client
 
     async def test_rejects_cyclic_dag(self, client: AsyncClient):
@@ -101,9 +93,7 @@ class TestWorkflowDagValidation:
         """Workflow referencing non-existent node should be rejected with INVALID_NODE_REFERENCE error."""
         payload = {
             "name": "Missing Dep Workflow",
-            "dag": {
-                "nodes": [{"id": "n1", "handler": "h1", "dependencies": ["nonexistent"]}]
-            },
+            "dag": {"nodes": [{"id": "n1", "handler": "h1", "dependencies": ["nonexistent"]}]},
         }
         response = await client.post("/api/v1/workflow", json=payload)
 
@@ -154,12 +144,8 @@ class TestWorkflowDagValidation:
 
         assert response.status_code == 201
 
-    @patch(
-        "src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute"
-    )
-    async def test_accepts_deeply_nested_dag(
-        self, mock_execute, client: AsyncClient
-    ):
+    @patch("src.application.workflow.use_cases.submit_workflow.SubmitWorkflowUseCase.execute")
+    async def test_accepts_deeply_nested_dag(self, mock_execute, client: AsyncClient):
         """
         Deeply nested linear DAG (50 nodes) should be accepted.
 
@@ -171,7 +157,7 @@ class TestWorkflowDagValidation:
             {
                 "id": f"n{i}",
                 "handler": "h1",
-                "dependencies": [f"n{i-1}"] if i > 0 else [],
+                "dependencies": [f"n{i - 1}"] if i > 0 else [],
             }
             for i in range(50)
         ]

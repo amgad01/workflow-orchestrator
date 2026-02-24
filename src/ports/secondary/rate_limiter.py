@@ -5,9 +5,7 @@ from src.domain.resilience.value_objects.rate_limit_result import RateLimitResul
 
 class IRateLimiter(ABC):
     @abstractmethod
-    async def check_rate_limit(
-        self, key: str, limit: int, window_seconds: int
-    ) -> RateLimitResult:
+    async def check_rate_limit(self, key: str, limit: int, window_seconds: int) -> RateLimitResult:
         pass
 
     @abstractmethod

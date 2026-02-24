@@ -37,7 +37,11 @@ class WorkerRunner:
         self._handlers[worker.handler_name] = worker
 
     async def run(self) -> None:
-        logger.info("worker_starting", consumer_name=self._consumer_name, delays_enabled=settings.WORKER_ENABLE_DELAYS)
+        logger.info(
+            "worker_starting",
+            consumer_name=self._consumer_name,
+            delays_enabled=settings.WORKER_ENABLE_DELAYS,
+        )
         await self._broker.create_consumer_groups()
 
         loop = asyncio.get_running_loop()
@@ -73,6 +77,7 @@ class WorkerRunner:
     async def process_task(self, task: TaskMessage) -> None:
         """Execute a task with idempotency checks, retries, and DLQ fallback."""
         from src.shared.logger import bind_context, clear_context
+
         bind_context({"execution_id": task.execution_id, "node_id": task.node_id})
 
         try:
@@ -122,7 +127,11 @@ class WorkerRunner:
                         )
                     else:
                         # Re-publish for retry; don't notify orchestrator yet
-                        logger.info("task_failure_retry", retry_count=retry_count, max_retries=settings.DLQ_MAX_RETRIES)
+                        logger.info(
+                            "task_failure_retry",
+                            retry_count=retry_count,
+                            max_retries=settings.DLQ_MAX_RETRIES,
+                        )
                         await self._broker.publish_task(task)
                         if task.stream_id:
                             await self._broker.acknowledge_task(task.stream_id)
@@ -158,7 +167,9 @@ class WorkerRunner:
 
         backoff_delay = self._calculate_backoff_delay(retry_count)
         if backoff_delay > 0:
-            logger.info("applying_retry_backoff", delay_seconds=backoff_delay, retry_count=retry_count)
+            logger.info(
+                "applying_retry_backoff", delay_seconds=backoff_delay, retry_count=retry_count
+            )
             await asyncio.sleep(backoff_delay)
 
         return retry_count
@@ -199,5 +210,6 @@ async def main():
 
 if __name__ == "__main__":
     from src.shared.logger import configure_logging
+
     configure_logging()
     asyncio.run(main())

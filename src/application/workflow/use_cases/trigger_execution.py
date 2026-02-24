@@ -12,7 +12,7 @@ from src.ports.secondary.workflow_repository import IWorkflowRepository
 class TriggerExecutionUseCase:
     """
     Use case for triggering the start of a pending execution.
-    
+
     This initiates the workflow by:
     1. Validating the execution existence and state.
     2. Identifying root nodes (zero dependencies).
@@ -20,6 +20,7 @@ class TriggerExecutionUseCase:
     4. Publishing initial tasks to the message broker.
     5. Updating system state to RUNNING.
     """
+
     def __init__(
         self,
         workflow_repository: IWorkflowRepository,
@@ -42,11 +43,11 @@ class TriggerExecutionUseCase:
         3. Identifies Root Nodes (Dependency-free nodes) from the DAG.
         4. Dispatches initial tasks to the Message Broker.
         5. Bootstraps Redis Metadata (Hot Path) so the Orchestrator can run without DB hits.
-        
+
         Args:
             execution_id: The execution to start.
             params: Runtime parameters/inputs.
-            
+
         Raises:
             ExecutionNotFoundError: If execution doesn't exist.
             InvalidWorkflowError: If workflow definition is missing.
@@ -54,11 +55,13 @@ class TriggerExecutionUseCase:
         execution = await self._execution_repository.get_by_id(execution_id)
         if not execution:
             from src.domain.workflow.exceptions import ExecutionNotFoundError
+
             raise ExecutionNotFoundError(execution_id)
 
         workflow = await self._workflow_repository.get_by_id(execution.workflow_id)
         if not workflow:
             from src.domain.workflow.exceptions import InvalidWorkflowError
+
             raise InvalidWorkflowError(f"Workflow {execution.workflow_id} not found")
 
         dag = DAG.from_json(workflow.dag_json)
@@ -92,8 +95,11 @@ class TriggerExecutionUseCase:
 
         # Populate Redis Metadata for Zero-DB Hot Path
         await self._state_store.set_execution_status(execution_id, NodeStatus.RUNNING)
-        await self._state_store.set_execution_metadata(execution_id, {
-            "workflow_id": execution.workflow_id,
-            "started_at": execution.started_at.isoformat() if execution.started_at else None,
-            "timeout_seconds": execution.timeout_seconds
-        })
+        await self._state_store.set_execution_metadata(
+            execution_id,
+            {
+                "workflow_id": execution.workflow_id,
+                "started_at": execution.started_at.isoformat() if execution.started_at else None,
+                "timeout_seconds": execution.timeout_seconds,
+            },
+        )
