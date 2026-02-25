@@ -2,6 +2,9 @@ FROM python:3.10-slim AS base
 
 WORKDIR /app
 
+# Upgrade pip build tooling to latest to pick up any security patches
+RUN pip install --upgrade pip setuptools wheel jaraco.context
+
 RUN pip install poetry==1.8.4 && \
     poetry config virtualenvs.create false
 
