@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 620" width="960" height="620">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a" />
+      <stop offset="100%" style="stop-color:#1e293b" />
+    </linearGradient>
+    <linearGradient id="input" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8" />
+      <stop offset="100%" style="stop-color:#4f46e5" />
+    </linearGradient>
+    <linearGradient id="orch" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa" />
+      <stop offset="100%" style="stop-color:#7c3aed" />
+    </linearGradient>
+    <linearGradient id="worker" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee" />
+      <stop offset="100%" style="stop-color:#0891b2" />
+    </linearGradient>
+    <linearGradient id="resil" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f87171" />
+      <stop offset="100%" style="stop-color:#dc2626" />
+    </linearGradient>
+    <linearGradient id="infra" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#34d399" />
+      <stop offset="100%" style="stop-color:#059669" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="shadow">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.4" />
+    </filter>
+    <marker id="arrow" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#94a3b8" />
+    </marker>
+    <marker id="arrowDash" viewBox="0 0 10 7" refX="10" refY="3.5" markerWidth="8" markerHeight="6" orient="auto-start-reverse">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#f87171" opacity="0.7" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="960" height="620" rx="16" fill="url(#bg)" />
+
+  <!-- Title -->
+  <text x="480" y="42" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="700" letter-spacing="1">DAG Workflow Orchestrator — System Architecture</text>
+
+  <!-- ═══════ EDGES (drawn first, behind nodes) ═══════ -->
+
+  <!-- API → DAG Parser -->
+  <line x1="160" y1="120" x2="310" y2="120" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- DAG Parser → Orchestrator -->
+  <line x1="420" y1="120" x2="540" y2="175" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Orchestrator → Dispatcher -->
+  <line x1="540" y1="225" x2="420" y2="280" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Dispatcher → Redis -->
+  <line x1="365" y1="310" x2="365" y2="380" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Redis → Workers (fan-out) -->
+  <line x1="310" y1="425" x2="140" y2="475" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="365" y1="440" x2="365" y2="475" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+  <line x1="420" y1="425" x2="590" y2="475" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Workers → Redis (completions back) -->
+  <line x1="170" y1="475" x2="320" y2="440" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)" />
+  <line x1="395" y1="475" x2="395" y2="440" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)" />
+  <line x1="560" y1="475" x2="410" y2="440" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)" />
+
+  <!-- Redis → Orchestrator (completions) -->
+  <line x1="420" y1="400" x2="555" y2="225" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3" marker-end="url(#arrow)" />
+
+  <!-- Orchestrator → PostgreSQL -->
+  <line x1="620" y1="200" x2="780" y2="200" stroke="#94a3b8" stroke-width="2" marker-end="url(#arrow)" />
+
+  <!-- Workers → DLQ (error path) -->
+  <line x1="140" y1="530" x2="140" y2="562" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7" marker-end="url(#arrowDash)" />
+  <line x1="365" y1="530" x2="365" y2="562" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7" marker-end="url(#arrowDash)" />
+  <line x1="590" y1="530" x2="590" y2="562" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7" marker-end="url(#arrowDash)" />
+
+  <!-- Circuit Breaker → Workers -->
+  <line x1="780" y1="480" x2="640" y2="500" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6" marker-end="url(#arrowDash)" />
+
+  <!-- Reaper → Redis -->
+  <line x1="780" y1="340" x2="430" y2="400" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.6" marker-end="url(#arrowDash)" />
+
+  <!-- ═══════ NODES ═══════ -->
+
+  <!-- API Gateway -->
+  <rect x="60" y="90" width="100" height="60" rx="12" fill="url(#input)" filter="url(#shadow)" />
+  <text x="110" y="117" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">API Gateway</text>
+  <text x="110" y="135" text-anchor="middle" fill="#c7d2fe" font-family="system-ui, sans-serif" font-size="10">FastAPI</text>
+
+  <!-- DAG Parser -->
+  <rect x="310" y="90" width="110" height="60" rx="12" fill="url(#orch)" filter="url(#shadow)" />
+  <text x="365" y="117" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">DAG Parser</text>
+  <text x="365" y="135" text-anchor="middle" fill="#ddd6fe" font-family="system-ui, sans-serif" font-size="10">Kahn's · Topo Sort</text>
+
+  <!-- Orchestrator -->
+  <rect x="540" y="170" width="120" height="60" rx="12" fill="url(#orch)" filter="url(#shadow)" />
+  <text x="600" y="197" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Orchestrator</text>
+  <text x="600" y="215" text-anchor="middle" fill="#ddd6fe" font-family="system-ui, sans-serif" font-size="10">Completion Listener</text>
+
+  <!-- Task Dispatcher -->
+  <rect x="295" y="265" width="140" height="50" rx="12" fill="url(#orch)" filter="url(#shadow)" />
+  <text x="365" y="290" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Task Dispatcher</text>
+  <text x="365" y="305" text-anchor="middle" fill="#ddd6fe" font-family="system-ui, sans-serif" font-size="10">Redis Streams</text>
+
+  <!-- Redis Streams -->
+  <rect x="290" y="390" width="150" height="50" rx="25" fill="url(#infra)" filter="url(#shadow)" />
+  <text x="365" y="413" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Redis Streams</text>
+  <text x="365" y="430" text-anchor="middle" fill="#a7f3d0" font-family="system-ui, sans-serif" font-size="10">Message Broker</text>
+
+  <!-- PostgreSQL -->
+  <rect x="770" y="170" width="140" height="60" rx="25" fill="url(#infra)" filter="url(#shadow)" />
+  <text x="840" y="197" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">PostgreSQL</text>
+  <text x="840" y="215" text-anchor="middle" fill="#a7f3d0" font-family="system-ui, sans-serif" font-size="10">Execution State</text>
+
+  <!-- Worker 1 -->
+  <rect x="70" y="480" width="140" height="50" rx="12" fill="url(#worker)" filter="url(#shadow)" />
+  <text x="140" y="503" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Worker 1</text>
+  <text x="140" y="520" text-anchor="middle" fill="#cffafe" font-family="system-ui, sans-serif" font-size="10">LLM · API · IO</text>
+
+  <!-- Worker 2 -->
+  <rect x="295" y="480" width="140" height="50" rx="12" fill="url(#worker)" filter="url(#shadow)" />
+  <text x="365" y="503" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Worker 2</text>
+  <text x="365" y="520" text-anchor="middle" fill="#cffafe" font-family="system-ui, sans-serif" font-size="10">LLM · API · IO</text>
+
+  <!-- Worker 3 -->
+  <rect x="520" y="480" width="140" height="50" rx="12" fill="url(#worker)" filter="url(#shadow)" />
+  <text x="590" y="503" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="13" font-weight="700">Worker 3</text>
+  <text x="590" y="520" text-anchor="middle" fill="#cffafe" font-family="system-ui, sans-serif" font-size="10">LLM · API · IO</text>
+
+  <!-- DLQ -->
+  <rect x="205" y="565" width="320" height="40" rx="10" fill="url(#resil)" filter="url(#shadow)" opacity="0.9" />
+  <text x="365" y="589" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Dead Letter Queue — ErrorDetail · Auto-classify</text>
+
+  <!-- Circuit Breaker -->
+  <rect x="740" y="460" width="160" height="50" rx="10" fill="url(#resil)" filter="url(#shadow)" opacity="0.9" />
+  <text x="820" y="483" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Circuit Breaker</text>
+  <text x="820" y="500" text-anchor="middle" fill="#fecaca" font-family="system-ui, sans-serif" font-size="10">Half-Open · Recovery</text>
+
+  <!-- Reaper -->
+  <rect x="740" y="320" width="160" height="50" rx="10" fill="url(#resil)" filter="url(#shadow)" opacity="0.9" />
+  <text x="820" y="343" text-anchor="middle" fill="#e2e8f0" font-family="system-ui, sans-serif" font-size="12" font-weight="700">Reaper</text>
+  <text x="820" y="360" text-anchor="middle" fill="#fecaca" font-family="system-ui, sans-serif" font-size="10">Stalled Task Recovery</text>
+
+  <!-- Legend -->
+  <rect x="30" y="60" width="12" height="12" rx="3" fill="url(#input)" />
+  <text x="48" y="71" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Input</text>
+  <rect x="90" y="60" width="12" height="12" rx="3" fill="url(#orch)" />
+  <text x="108" y="71" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Orchestration</text>
+  <rect x="185" y="60" width="12" height="12" rx="3" fill="url(#worker)" />
+  <text x="203" y="71" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Workers</text>
+  <rect x="260" y="60" width="12" height="12" rx="3" fill="url(#resil)" />
+  <text x="278" y="71" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Resilience</text>
+  <rect x="350" y="60" width="12" height="12" rx="3" fill="url(#infra)" />
+  <text x="368" y="71" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Infrastructure</text>
+
+  <!-- Edge legend -->
+  <line x1="480" y1="66" x2="510" y2="66" stroke="#94a3b8" stroke-width="2" />
+  <text x="518" y="70" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Data flow</text>
+  <line x1="580" y1="66" x2="610" y2="66" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="6,3" />
+  <text x="618" y="70" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Completions</text>
+  <line x1="690" y1="66" x2="720" y2="66" stroke="#f87171" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.7" />
+  <text x="728" y="70" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="10">Error / Recovery</text>
+
+  <!-- Edge labels -->
+  <text x="228" y="112" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9" font-style="italic">Submit DAG</text>
+  <text x="455" y="140" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9" font-style="italic">Parsed</text>
+  <text x="455" y="260" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9" font-style="italic">Dispatch</text>
+  <text x="390" y="365" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9" font-style="italic">Publish</text>
+  <text x="688" y="195" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9" font-style="italic">Persist State</text>
+  <text x="478" y="310" fill="#94a3b8" font-family="system-ui, sans-serif" font-size="9" font-style="italic">Completions</text>
+</svg>
