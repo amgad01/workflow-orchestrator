@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     # === Distributed Lock ===
     LOCK_TTL_SECONDS: int = 30
 
+    # === DAG Cache ===
+    DAG_CACHE_MAX_SIZE: int = 256
+    DAG_CACHE_TTL_SECONDS: int = 300  # 5 min — aligned with reaper idle threshold
+
     # === Workflow ===
     EXECUTION_METADATA_TTL_SECONDS: int = 86400
 

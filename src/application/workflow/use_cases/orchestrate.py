@@ -1,5 +1,6 @@
-import logging
 from datetime import datetime, timezone
+
+from cachetools import TTLCache
 
 from src.domain.workflow.value_objects.dag import DAG
 from src.domain.workflow.value_objects.node_status import NodeStatus
@@ -9,14 +10,19 @@ from src.ports.secondary.message_broker import CompletionMessage, IMessageBroker
 from src.ports.secondary.metrics import IMetrics
 from src.ports.secondary.state_store import IStateStore
 from src.ports.secondary.workflow_repository import IWorkflowRepository
+from src.shared.config import settings
+from src.shared.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 
 class OrchestrateUseCase:
     """Reacts to task completions, resolves dependencies, and dispatches next tasks."""
 
-    _dag_cache = {}
+    _dag_cache: TTLCache = TTLCache(
+        maxsize=settings.DAG_CACHE_MAX_SIZE,
+        ttl=settings.DAG_CACHE_TTL_SECONDS,
+    )
 
     def __init__(
         self,

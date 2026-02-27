@@ -153,3 +153,49 @@ async def test_check_all_timeouts_no_timeout(orchestrate_use_case, mock_executio
     # Verify
     assert execution.status == NodeStatus.RUNNING
     mock_execution_repo.update.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_dag_cache_is_bounded():
+    """Verify the DAG cache uses TTLCache and has bounded size."""
+    from cachetools import TTLCache
+
+    cache = OrchestrateUseCase._dag_cache
+    assert isinstance(cache, TTLCache), "DAG cache should be a TTLCache instance"
+    assert cache.maxsize > 0, "DAG cache max size should be positive"
+
+
+@pytest.mark.asyncio
+async def test_dag_cache_evicts_on_overflow(
+    mock_workflow_repo, mock_execution_repo, mock_state_store, mock_message_broker
+):
+    """Verify the DAG cache evicts entries when maxsize is exceeded."""
+    from cachetools import TTLCache
+
+    # Create a small cache for testing
+    original_cache = OrchestrateUseCase._dag_cache
+    OrchestrateUseCase._dag_cache = TTLCache(maxsize=2, ttl=60)
+
+    try:
+        use_case = OrchestrateUseCase(
+            workflow_repository=mock_workflow_repo,
+            execution_repository=mock_execution_repo,
+            state_store=mock_state_store,
+            message_broker=mock_message_broker,
+        )
+
+        # Create 3 mock workflows to exceed cache size of 2
+        for i in range(3):
+            wf = Workflow(
+                name=f"test-{i}",
+                dag_json={"nodes": [{"id": f"n{i}", "handler": "input"}]},
+                id=f"wf-{i}",
+            )
+            mock_workflow_repo.get_by_id.return_value = wf
+            await use_case._get_workflow_dag(f"wf-{i}")
+
+        # Cache should only hold 2 entries (maxsize=2), first one evicted
+        assert len(OrchestrateUseCase._dag_cache) == 2
+        assert "wf-0" not in OrchestrateUseCase._dag_cache
+    finally:
+        OrchestrateUseCase._dag_cache = original_cache
