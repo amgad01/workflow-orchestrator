@@ -1,5 +1,9 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+# Bump these when message format changes to support rolling deployments
+TASK_MESSAGE_SCHEMA_VERSION = 1
+COMPLETION_MESSAGE_SCHEMA_VERSION = 1
 
 
 @dataclass
@@ -10,6 +14,7 @@ class TaskMessage:
     handler: str
     config: dict
     stream_id: str | None = None
+    schema_version: int = field(default=TASK_MESSAGE_SCHEMA_VERSION)
 
 
 @dataclass
@@ -21,6 +26,7 @@ class CompletionMessage:
     output: dict | None = None
     error: str | None = None
     stream_id: str | None = None
+    schema_version: int = field(default=COMPLETION_MESSAGE_SCHEMA_VERSION)
 
 
 class IMessageBroker(ABC):

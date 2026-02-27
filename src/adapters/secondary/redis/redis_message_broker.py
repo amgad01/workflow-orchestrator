@@ -3,11 +3,16 @@ import json
 import redis.asyncio as redis
 
 from src.ports.secondary.message_broker import (
+    COMPLETION_MESSAGE_SCHEMA_VERSION,
+    TASK_MESSAGE_SCHEMA_VERSION,
     CompletionMessage,
     IMessageBroker,
     TaskMessage,
 )
 from src.shared.config import settings
+from src.shared.logger import get_logger
+
+logger = get_logger(__name__)
 
 
 class RedisMessageBroker(IMessageBroker):
@@ -41,6 +46,7 @@ class RedisMessageBroker(IMessageBroker):
                 "node_id": task.node_id,
                 "handler": task.handler,
                 "config": json.dumps(task.config),
+                "schema_version": str(task.schema_version),
             },
         )
         return message_id
@@ -55,6 +61,7 @@ class RedisMessageBroker(IMessageBroker):
                 "success": "1" if completion.success else "0",
                 "output": json.dumps(completion.output) if completion.output else "",
                 "error": completion.error or "",
+                "schema_version": str(completion.schema_version),
             },
         )
         return message_id
@@ -80,6 +87,13 @@ class RedisMessageBroker(IMessageBroker):
         if messages:
             for _stream, stream_messages in messages:
                 for message_id, data in stream_messages:
+                    msg_version = int(data.get("schema_version", 1))
+                    if msg_version > TASK_MESSAGE_SCHEMA_VERSION:
+                        logger.warning(
+                            "unknown_task_schema_version",
+                            version=msg_version,
+                            expected=TASK_MESSAGE_SCHEMA_VERSION,
+                        )
                     tasks.append(
                         TaskMessage(
                             id=data["id"],
@@ -88,6 +102,7 @@ class RedisMessageBroker(IMessageBroker):
                             handler=data["handler"],
                             config=json.loads(data["config"]),
                             stream_id=message_id,
+                            schema_version=msg_version,
                         )
                     )
         return tasks
@@ -113,6 +128,13 @@ class RedisMessageBroker(IMessageBroker):
         if messages:
             for _stream, stream_messages in messages:
                 for message_id, data in stream_messages:
+                    msg_version = int(data.get("schema_version", 1))
+                    if msg_version > COMPLETION_MESSAGE_SCHEMA_VERSION:
+                        logger.warning(
+                            "unknown_completion_schema_version",
+                            version=msg_version,
+                            expected=COMPLETION_MESSAGE_SCHEMA_VERSION,
+                        )
                     completions.append(
                         CompletionMessage(
                             id=data["id"],
@@ -122,6 +144,7 @@ class RedisMessageBroker(IMessageBroker):
                             output=json.loads(data["output"]) if data.get("output") else None,
                             error=data.get("error") or None,
                             stream_id=message_id,
+                            schema_version=msg_version,
                         )
                     )
         return completions
@@ -163,6 +186,7 @@ class RedisMessageBroker(IMessageBroker):
                     handler=data["handler"],
                     config=json.loads(data["config"]),
                     stream_id=message_id,
+                    schema_version=int(data.get("schema_version", 1)),
                 )
                 tasks.append((message_id, task))
         return tasks
