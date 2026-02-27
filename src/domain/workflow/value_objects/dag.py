@@ -1,4 +1,4 @@
-from collections import defaultdict
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 
 from src.domain.workflow.exceptions import (
@@ -88,11 +88,11 @@ class DAG:
             if node_id not in in_degree:
                 in_degree[node_id] = 0
 
-        queue = [node_id for node_id, degree in in_degree.items() if degree == 0]
+        queue = deque(node_id for node_id, degree in in_degree.items() if degree == 0)
         visited_count = 0
 
         while queue:
-            current = queue.pop(0)
+            current = queue.popleft()
             visited_count += 1
 
             for neighbor in self.adjacency.get(current, set()):
@@ -119,11 +119,11 @@ class DAG:
             if node_id not in in_degree:
                 in_degree[node_id] = 0
 
-        queue = sorted([node_id for node_id, degree in in_degree.items() if degree == 0])
+        queue = deque(sorted(node_id for node_id, degree in in_degree.items() if degree == 0))
         result = []
 
         while queue:
-            current = queue.pop(0)
+            current = queue.popleft()
             result.append(current)
 
             for neighbor in sorted(self.adjacency.get(current, set())):
