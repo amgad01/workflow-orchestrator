@@ -21,21 +21,24 @@ logger = get_logger(__name__)
 class OrchestratorRunner:
     """Consumes completion events from Redis Streams and drives DAG progression."""
 
+    SHUTDOWN_TIMEOUT_SECONDS = 30
+
     def __init__(self):
         self._broker = RedisMessageBroker(redis_client)
         self._state_store = RedisStateStore(redis_client)
         self._consumer_name = f"orchestrator-{uuid4().hex[:8]}"
+        self._in_flight: set[asyncio.Task] = set()
+        self._shutdown_event = asyncio.Event()
 
     async def run(self) -> None:
         logger.info("orchestrator_starting", consumer_name=self._consumer_name)
         await self._broker.create_consumer_groups()
 
         loop = asyncio.get_running_loop()
-        shutdown_event = asyncio.Event()
 
         def signal_handler():
-            logger.info("shutdown_signal_received")
-            shutdown_event.set()
+            logger.info("shutdown_signal_received", consumer_name=self._consumer_name)
+            self._shutdown_event.set()
 
         try:
             for sig in (signal.SIGTERM, signal.SIGINT):
@@ -45,7 +48,7 @@ class OrchestratorRunner:
 
         async def timeout_checker():
             """Periodically scans running executions for timeouts."""
-            while not shutdown_event.is_set():
+            while not self._shutdown_event.is_set():
                 try:
                     async with async_session_factory() as session:
                         use_case = OrchestrateUseCase(
@@ -65,7 +68,7 @@ class OrchestratorRunner:
         timeout_task = asyncio.create_task(timeout_checker())
 
         try:
-            while not shutdown_event.is_set():
+            while not self._shutdown_event.is_set():
                 try:
                     completions = await self._broker.consume_completions(
                         consumer_group=RedisMessageBroker.COMPLETION_GROUP,
@@ -74,17 +77,48 @@ class OrchestratorRunner:
                         block_ms=settings.ORCHESTRATOR_BLOCK_MS,
                     )
                     if completions:
-                        await asyncio.gather(*[self.handle_completion(c) for c in completions])
+                        batch_tasks = []
+                        for c in completions:
+                            task = asyncio.create_task(self.handle_completion(c))
+                            self._in_flight.add(task)
+                            task.add_done_callback(self._in_flight.discard)
+                            batch_tasks.append(task)
+                        await asyncio.gather(*batch_tasks, return_exceptions=True)
                 except Exception as e:
                     logger.error("orchestrator_main_loop_error", error=str(e), exc_info=True)
-                    if not shutdown_event.is_set():
+                    if not self._shutdown_event.is_set():
                         await asyncio.sleep(settings.ORCHESTRATOR_TIMEOUT_CHECK_INTERVAL_SECONDS)
         finally:
-            shutdown_event.set()
+            self._shutdown_event.set()
             timeout_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await timeout_task
-            logger.info("orchestrator_shutdown_complete")
+
+            # Drain in-flight completions before exit
+            await self._drain_in_flight()
+            logger.info("orchestrator_shutdown_complete", consumer_name=self._consumer_name)
+
+    async def _drain_in_flight(self) -> None:
+        """Wait for in-flight completion handlers to finish before shutting down."""
+        if not self._in_flight:
+            return
+
+        logger.info(
+            "draining_in_flight_completions",
+            count=len(self._in_flight),
+            timeout=self.SHUTDOWN_TIMEOUT_SECONDS,
+        )
+        try:
+            done, pending = await asyncio.wait(
+                self._in_flight, timeout=self.SHUTDOWN_TIMEOUT_SECONDS
+            )
+            if pending:
+                logger.warning("cancelling_timed_out_completions", count=len(pending))
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+        except Exception as e:
+            logger.error("drain_error", error=str(e), exc_info=True)
 
     async def handle_completion(self, completion: CompletionMessage) -> None:
         """Process a single completion with an isolated DB session. ACKs only after commit."""

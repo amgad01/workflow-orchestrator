@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -113,3 +114,82 @@ async def test_worker_runner_run_loop():
 
         assert mock_broker.create_consumer_groups.called
         assert mock_process.called
+
+
+@pytest.mark.asyncio
+async def test_worker_graceful_shutdown_drains_in_flight():
+    """Verify the worker waits for in-flight tasks during shutdown."""
+    with (
+        patch("src.worker.RedisMessageBroker") as mock_broker_cls,
+        patch("src.worker.RedisStateStore"),
+        patch("src.worker.redis_client"),
+        patch("src.worker.RedisDLQRepository"),
+    ):
+        mock_broker = mock_broker_cls.return_value
+        mock_broker.create_consumer_groups = AsyncMock()
+        mock_broker.publish_completion = AsyncMock()
+        mock_broker.acknowledge_task = AsyncMock()
+
+        runner = WorkerRunner()
+
+        # Create a fake slow task
+        slow_task = asyncio.create_task(asyncio.sleep(0.1))
+        runner._in_flight.add(slow_task)
+        slow_task.add_done_callback(runner._in_flight.discard)
+
+        # Drain should wait for the task to finish
+        await runner._drain_in_flight()
+        assert len(runner._in_flight) == 0
+
+
+@pytest.mark.asyncio
+async def test_worker_drain_cancels_after_timeout():
+    """Verify the worker cancels tasks that exceed the shutdown timeout."""
+    with (
+        patch("src.worker.RedisMessageBroker"),
+        patch("src.worker.RedisStateStore"),
+        patch("src.worker.redis_client"),
+        patch("src.worker.RedisDLQRepository"),
+    ):
+        runner = WorkerRunner()
+        runner.SHUTDOWN_TIMEOUT_SECONDS = 0.1  # Very short timeout
+
+        # Create a task that would take forever
+        stuck_task = asyncio.create_task(asyncio.sleep(999))
+        runner._in_flight.add(stuck_task)
+        stuck_task.add_done_callback(runner._in_flight.discard)
+
+        await runner._drain_in_flight()
+        assert stuck_task.cancelled()
+
+
+@pytest.mark.asyncio
+async def test_orchestrator_graceful_shutdown_drains():
+    """Verify the orchestrator drains in-flight completions during shutdown."""
+    with (
+        patch("src.orchestrator.RedisMessageBroker"),
+        patch("src.orchestrator.RedisStateStore"),
+    ):
+        runner = OrchestratorRunner()
+
+        fast_task = asyncio.create_task(asyncio.sleep(0.05))
+        runner._in_flight.add(fast_task)
+        fast_task.add_done_callback(runner._in_flight.discard)
+
+        await runner._drain_in_flight()
+        assert len(runner._in_flight) == 0
+
+
+@pytest.mark.asyncio
+async def test_worker_has_shutdown_event():
+    """Verify the worker exposes a shutdown_event for clean signal handling."""
+    with (
+        patch("src.worker.RedisMessageBroker"),
+        patch("src.worker.RedisStateStore"),
+        patch("src.worker.redis_client"),
+        patch("src.worker.RedisDLQRepository"),
+    ):
+        runner = WorkerRunner()
+        assert hasattr(runner, "_shutdown_event")
+        assert isinstance(runner._shutdown_event, asyncio.Event)
+        assert not runner._shutdown_event.is_set()

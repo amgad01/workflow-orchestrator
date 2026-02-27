@@ -14,6 +14,7 @@ from src.adapters.secondary.workers.external_service_worker import ExternalServi
 from src.adapters.secondary.workers.io_workers import InputWorker, OutputWorker
 from src.adapters.secondary.workers.llm_service_worker import LLMServiceWorker
 from src.domain.resilience.entities.dead_letter_entry import DeadLetterEntry
+from src.domain.resilience.value_objects.error_detail import ErrorDetail
 from src.ports.secondary.message_broker import CompletionMessage, TaskMessage
 from src.shared.config import settings
 from src.shared.logger import get_logger
@@ -26,12 +27,16 @@ logger = get_logger(__name__)
 class WorkerRunner:
     """Consumes tasks from Redis Streams, delegates to handlers, and reports results."""
 
+    SHUTDOWN_TIMEOUT_SECONDS = 30
+
     def __init__(self):
         self._broker = RedisMessageBroker(redis_client)
         self._state_store = RedisStateStore(redis_client)
         self._dlq_repository = RedisDLQRepository(redis_client)
         self._consumer_name = f"worker-{uuid4().hex[:8]}"
         self._handlers: dict[str, BaseWorker] = {}
+        self._in_flight: set[asyncio.Task] = set()
+        self._shutdown_event = asyncio.Event()
 
     def register_handler(self, worker: BaseWorker) -> None:
         self._handlers[worker.handler_name] = worker
@@ -45,11 +50,10 @@ class WorkerRunner:
         await self._broker.create_consumer_groups()
 
         loop = asyncio.get_running_loop()
-        shutdown_event = asyncio.Event()
 
         def signal_handler():
-            logger.info("shutdown_signal_received")
-            shutdown_event.set()
+            logger.info("shutdown_signal_received", consumer_name=self._consumer_name)
+            self._shutdown_event.set()
 
         try:
             for sig in (signal.SIGTERM, signal.SIGINT):
@@ -57,7 +61,7 @@ class WorkerRunner:
         except NotImplementedError:
             pass
 
-        while not shutdown_event.is_set():
+        while not self._shutdown_event.is_set():
             try:
                 tasks = await self._broker.consume_tasks(
                     consumer_group=RedisMessageBroker.TASK_GROUP,
@@ -66,13 +70,46 @@ class WorkerRunner:
                     block_ms=settings.WORKER_BLOCK_MS,
                 )
                 if tasks:
-                    await asyncio.gather(*[self.process_task(t) for t in tasks])
+                    batch_tasks = []
+                    for t in tasks:
+                        task = asyncio.create_task(self.process_task(t))
+                        self._in_flight.add(task)
+                        task.add_done_callback(self._in_flight.discard)
+                        batch_tasks.append(task)
+                    await asyncio.gather(*batch_tasks, return_exceptions=True)
             except Exception as e:
                 logger.error("worker_main_loop_error", error=str(e), exc_info=True)
-                if not shutdown_event.is_set():
+                if not self._shutdown_event.is_set():
                     await asyncio.sleep(settings.WORKER_ERROR_PAUSE_SECONDS)
 
-        logger.info("worker_shutdown_complete")
+        # Drain in-flight tasks before exit
+        await self._drain_in_flight()
+        logger.info("worker_shutdown_complete", consumer_name=self._consumer_name)
+
+    async def _drain_in_flight(self) -> None:
+        """Wait for in-flight tasks to finish before shutting down."""
+        if not self._in_flight:
+            return
+
+        logger.info(
+            "draining_in_flight_tasks",
+            count=len(self._in_flight),
+            timeout=self.SHUTDOWN_TIMEOUT_SECONDS,
+        )
+        try:
+            done, pending = await asyncio.wait(
+                self._in_flight, timeout=self.SHUTDOWN_TIMEOUT_SECONDS
+            )
+            if pending:
+                logger.warning(
+                    "cancelling_timed_out_tasks",
+                    count=len(pending),
+                )
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
+        except Exception as e:
+            logger.error("drain_error", error=str(e), exc_info=True)
 
     async def process_task(self, task: TaskMessage) -> None:
         """Execute a task with idempotency checks, retries, and DLQ fallback."""
@@ -116,7 +153,7 @@ class WorkerRunner:
                     retry_count = await self._increment_retry_count(task)
 
                     if retry_count >= settings.DLQ_MAX_RETRIES:
-                        await self._move_to_dlq(task, str(e), retry_count)
+                        await self._move_to_dlq(task, str(e), retry_count, exc=e)
                         logger.warning("task_moved_to_dlq", retry_count=retry_count)
                         completion = CompletionMessage(
                             id=task.id,
@@ -184,7 +221,10 @@ class WorkerRunner:
 
         return exponential_delay + jitter
 
-    async def _move_to_dlq(self, task: TaskMessage, error: str, retry_count: int) -> None:
+    async def _move_to_dlq(
+        self, task: TaskMessage, error: str, retry_count: int, exc: Exception | None = None
+    ) -> None:
+        error_detail = ErrorDetail.from_exception(exc) if exc else ErrorDetail.from_message(error)
         entry = DeadLetterEntry(
             task_id=task.id,
             execution_id=task.execution_id,
@@ -194,6 +234,7 @@ class WorkerRunner:
             error_message=error,
             retry_count=retry_count,
             original_timestamp=datetime.now(timezone.utc),
+            error_detail=error_detail,
         )
         await self._dlq_repository.push(entry)
 
