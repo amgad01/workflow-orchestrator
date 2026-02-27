@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 200" width="800" height="200">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0f172a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#1e293b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="nodeGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#818cf8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4f46e5;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="nodeGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#22d3ee;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0891b2;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="nodeGrad3" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#a78bfa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7c3aed;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="edgeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#818cf8;stop-opacity:0.8" />
+      <stop offset="100%" style="stop-color:#22d3ee;stop-opacity:0.8" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="softGlow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="800" height="200" rx="12" fill="url(#bgGrad)" />
+  <rect width="800" height="200" rx="12" fill="none" stroke="#334155" stroke-width="1" />
+
+  <!-- DAG Visualization (left side) -->
+  <g transform="translate(60, 100)" filter="url(#glow)">
+    <!-- Edges (drawn first, behind nodes) -->
+    <!-- Root to layer 2 -->
+    <line x1="0" y1="0" x2="70" y2="-35" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="0" y1="0" x2="70" y2="0" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="0" y1="0" x2="70" y2="35" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Layer 2 to layer 3 -->
+    <line x1="70" y1="-35" x2="140" y2="-20" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="70" y1="0" x2="140" y2="-20" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="70" y1="0" x2="140" y2="20" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="70" y1="35" x2="140" y2="20" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Layer 3 to sink -->
+    <line x1="140" y1="-20" x2="210" y2="0" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="140" y1="20" x2="210" y2="0" stroke="url(#edgeGrad)" stroke-width="2.5" stroke-linecap="round" />
+
+    <!-- Nodes -->
+    <!-- Root (layer 1) -->
+    <circle cx="0" cy="0" r="12" fill="url(#nodeGrad1)" />
+    <circle cx="0" cy="0" r="12" fill="none" stroke="#c7d2fe" stroke-width="1" opacity="0.5" />
+
+    <!-- Layer 2 (fan-out) -->
+    <circle cx="70" cy="-35" r="10" fill="url(#nodeGrad2)" />
+    <circle cx="70" cy="-35" r="10" fill="none" stroke="#a5f3fc" stroke-width="1" opacity="0.5" />
+    <circle cx="70" cy="0" r="10" fill="url(#nodeGrad2)" />
+    <circle cx="70" cy="0" r="10" fill="none" stroke="#a5f3fc" stroke-width="1" opacity="0.5" />
+    <circle cx="70" cy="35" r="10" fill="url(#nodeGrad2)" />
+    <circle cx="70" cy="35" r="10" fill="none" stroke="#a5f3fc" stroke-width="1" opacity="0.5" />
+
+    <!-- Layer 3 (fan-in) -->
+    <circle cx="140" cy="-20" r="10" fill="url(#nodeGrad3)" />
+    <circle cx="140" cy="-20" r="10" fill="none" stroke="#ddd6fe" stroke-width="1" opacity="0.5" />
+    <circle cx="140" cy="20" r="10" fill="url(#nodeGrad3)" />
+    <circle cx="140" cy="20" r="10" fill="none" stroke="#ddd6fe" stroke-width="1" opacity="0.5" />
+
+    <!-- Sink (layer 4) -->
+    <circle cx="210" cy="0" r="12" fill="url(#nodeGrad1)" />
+    <circle cx="210" cy="0" r="12" fill="none" stroke="#c7d2fe" stroke-width="1" opacity="0.5" />
+  </g>
+
+  <!-- Title Text -->
+  <text x="340" y="85" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="42" font-weight="700" fill="#e2e8f0" letter-spacing="-0.5">
+    Workflow
+  </text>
+  <text x="340" y="130" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="42" font-weight="700" fill="#818cf8" letter-spacing="-0.5">
+    Orchestrator
+  </text>
+
+  <!-- Subtitle -->
+  <text x="340" y="158" font-family="Segoe UI, system-ui, -apple-system, sans-serif" font-size="14" fill="#94a3b8" letter-spacing="0.5">
+    Distributed DAG Engine  ·  Redis Streams  ·  Python
+  </text>
+
+  <!-- Tech badges (right side) -->
+  <g transform="translate(640, 55)">
+    <!-- FastAPI badge -->
+    <rect x="0" y="0" width="70" height="22" rx="4" fill="#059669" opacity="0.25" />
+    <rect x="0" y="0" width="70" height="22" rx="4" fill="none" stroke="#34d399" stroke-width="1" opacity="0.5" />
+    <text x="35" y="15" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#34d399" text-anchor="middle" font-weight="600">FastAPI</text>
+
+    <!-- Redis badge -->
+    <rect x="78" y="0" width="56" height="22" rx="4" fill="#dc2626" opacity="0.25" />
+    <rect x="78" y="0" width="56" height="22" rx="4" fill="none" stroke="#f87171" stroke-width="1" opacity="0.5" />
+    <text x="106" y="15" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#f87171" text-anchor="middle" font-weight="600">Redis</text>
+
+    <!-- PostgreSQL badge -->
+    <rect x="0" y="30" width="82" height="22" rx="4" fill="#4f46e5" opacity="0.25" />
+    <rect x="0" y="30" width="82" height="22" rx="4" fill="none" stroke="#818cf8" stroke-width="1" opacity="0.5" />
+    <text x="41" y="45" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#818cf8" text-anchor="middle" font-weight="600">PostgreSQL</text>
+
+    <!-- Docker badge -->
+    <rect x="90" y="30" width="56" height="22" rx="4" fill="#0891b2" opacity="0.25" />
+    <rect x="90" y="30" width="56" height="22" rx="4" fill="none" stroke="#22d3ee" stroke-width="1" opacity="0.5" />
+    <text x="118" y="45" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#22d3ee" text-anchor="middle" font-weight="600">Docker</text>
+
+    <!-- Prometheus badge -->
+    <rect x="0" y="60" width="90" height="22" rx="4" fill="#7c3aed" opacity="0.25" />
+    <rect x="0" y="60" width="90" height="22" rx="4" fill="none" stroke="#a78bfa" stroke-width="1" opacity="0.5" />
+    <text x="45" y="75" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#a78bfa" text-anchor="middle" font-weight="600">Prometheus</text>
+
+    <!-- asyncio badge -->
+    <rect x="98" y="60" width="56" height="22" rx="4" fill="#ca8a04" opacity="0.25" />
+    <rect x="98" y="60" width="56" height="22" rx="4" fill="none" stroke="#facc15" stroke-width="1" opacity="0.5" />
+    <text x="126" y="75" font-family="Segoe UI, system-ui, sans-serif" font-size="11" fill="#facc15" text-anchor="middle" font-weight="600">asyncio</text>
+  </g>
+</svg>
