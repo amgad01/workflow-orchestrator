@@ -22,6 +22,14 @@ def get_dlq_repository() -> RedisDLQRepository:
     return RedisDLQRepository(redis_client)
 
 
+class ErrorDetailResponse(BaseModel):
+    message: str
+    error_code: str
+    category: str
+    traceback_hash: str
+    timestamp: str
+
+
 class DLQEntryResponse(BaseModel):
     id: str
     task_id: str
@@ -32,6 +40,7 @@ class DLQEntryResponse(BaseModel):
     retry_count: int
     original_timestamp: str
     failed_at: str
+    error_detail: ErrorDetailResponse | None = None
 
 
 class DLQListResponse(BaseModel):
@@ -73,6 +82,9 @@ async def list_dlq_entries(
                 retry_count=e.retry_count,
                 original_timestamp=e.original_timestamp.isoformat(),
                 failed_at=e.failed_at.isoformat(),
+                error_detail=ErrorDetailResponse(**e.error_detail.to_dict())
+                if e.error_detail
+                else None,
             )
             for e in entries
         ],
