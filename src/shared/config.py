@@ -1,4 +1,4 @@
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,8 +13,19 @@ class Settings(BaseSettings):
     DB_MAX_OVERFLOW: int = 10
     DB_POOL_TIMEOUT: int = 30
 
+    # AWS RDS component fields (override database_url when set)
+    DB_HOST: str | None = None
+    DB_PORT: int = 5432
+    DB_USERNAME: str | None = None
+    DB_PASSWORD: str | None = None
+    DB_NAME: str = "workflow"
+
     # === Redis ===
     redis_url: str = "redis://localhost:6379/0"
+
+    # AWS ElastiCache component fields (override redis_url when set)
+    REDIS_HOST: str | None = None
+    REDIS_PORT: int = 6379
 
     # === Worker: batch & polling ===
     WORKER_BATCH_SIZE: int = 50
@@ -101,6 +112,18 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def construct_urls_from_components(self) -> "Settings":
+        """Construct database_url/redis_url from individual AWS components."""
+        if self.DB_HOST and self.DB_USERNAME and self.DB_PASSWORD:
+            self.database_url = (
+                f"postgresql+asyncpg://{self.DB_USERNAME}:{self.DB_PASSWORD}"
+                f"@{self.DB_HOST}:{self.DB_PORT}/{self.DB_NAME}"
+            )
+        if self.REDIS_HOST:
+            self.redis_url = f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
+        return self
 
     @field_validator("RATE_LIMIT_REQUESTS_PER_MINUTE")
     @classmethod
