@@ -1,0 +1,172 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Environment to deploy'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - prod
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+
+jobs:
+  deploy:
+    name: Deploy (${{ github.event.inputs.stage }})
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.stage }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Prefix resolution: feature/wo-42-* → wo-42, bug/wo-7-* → wo-7.
+      # Main/master and unrecognized branches use the bare "wo" prefix.
+      - name: Resolve prefix from branch
+        id: prefix
+        run: |
+          BRANCH="${GITHUB_REF_NAME}"
+          NUMBER=$(echo "$BRANCH" | sed -n 's/^\(feature\|bug\|hotfix\)\/wo-\([0-9]*\).*/\2/p')
+          if [ -n "$NUMBER" ]; then
+            PREFIX="wo-${NUMBER}"
+          else
+            PREFIX="wo"
+          fi
+          echo "value=${PREFIX}" >> $GITHUB_OUTPUT
+          echo "Resolved prefix: ${PREFIX}"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: production
+          push: true
+          tags: |
+            ${{ steps.ecr-login.outputs.registry }}/${{ steps.prefix.outputs.value }}-app:latest
+            ${{ steps.ecr-login.outputs.registry }}/${{ steps.prefix.outputs.value }}-app:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: infrastructure/package-lock.json
+
+      - name: Install CDK dependencies
+        working-directory: infrastructure
+        run: npm ci
+
+      - name: CDK Deploy
+        working-directory: infrastructure
+        env:
+          STAGE: ${{ github.event.inputs.stage }}
+          PREFIX: ${{ steps.prefix.outputs.value }}
+        run: npx cdk deploy "${PREFIX}-${STAGE}" --require-approval never --outputs-file "cdk-${STAGE}-outputs.json"
+
+      - name: Run Database Migration
+        env:
+          STAGE: ${{ github.event.inputs.stage }}
+          PREFIX: ${{ steps.prefix.outputs.value }}
+        run: |
+          STACK_NAME="${PREFIX}-${STAGE}"
+
+          CLUSTER_NAME=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Outputs[?ExportName=='${PREFIX}-cluster-name'].OutputValue" \
+            --output text)
+
+          MIGRATION_TASK_ARN=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Outputs[?ExportName=='${PREFIX}-migration-task-arn'].OutputValue" \
+            --output text)
+
+          SUBNETS=$(aws ec2 describe-subnets \
+            --filters "Name=tag:Name,Values=*${PREFIX}*" \
+            --query "Subnets[].SubnetId" --output text | tr '\t' ',')
+
+          ECS_SG=$(aws ec2 describe-security-groups \
+            --filters "Name=group-name,Values=${PREFIX}-ecs-sg" \
+            --query "SecurityGroups[0].GroupId" --output text)
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "${CLUSTER_NAME}" \
+            --task-definition "${MIGRATION_TASK_ARN}" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[${SUBNETS}],securityGroups=[${ECS_SG}],assignPublicIp=ENABLED}" \
+            --query "tasks[0].taskArn" --output text)
+
+          echo "Migration task: ${TASK_ARN}"
+          aws ecs wait tasks-stopped --cluster "${CLUSTER_NAME}" --tasks "${TASK_ARN}"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "${CLUSTER_NAME}" \
+            --tasks "${TASK_ARN}" \
+            --query "tasks[0].containers[0].exitCode" --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed (exit code: ${EXIT_CODE})"
+            aws logs tail "/ecs/${PREFIX}/migration" --since 10m
+            exit 1
+          fi
+          echo "Migration succeeded"
+
+      - name: Force service redeployments
+        env:
+          STAGE: ${{ github.event.inputs.stage }}
+          PREFIX: ${{ steps.prefix.outputs.value }}
+        run: |
+          STACK_NAME="${PREFIX}-${STAGE}"
+
+          CLUSTER_NAME=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Outputs[?ExportName=='${PREFIX}-cluster-name'].OutputValue" \
+            --output text)
+
+          for SERVICE in api worker orchestrator reaper; do
+            aws ecs update-service \
+              --cluster "${CLUSTER_NAME}" \
+              --service "${PREFIX}-${SERVICE}" \
+              --force-new-deployment \
+              --no-cli-pager > /dev/null
+            echo "✓ ${SERVICE} redeploying"
+          done
+
+      - name: Output API URL
+        env:
+          STAGE: ${{ github.event.inputs.stage }}
+          PREFIX: ${{ steps.prefix.outputs.value }}
+        run: |
+          STACK_NAME="${PREFIX}-${STAGE}"
+          API_URL=$(aws cloudformation describe-stacks \
+            --stack-name "${STACK_NAME}" \
+            --query "Stacks[0].Outputs[?ExportName=='${PREFIX}-api-url'].OutputValue" \
+            --output text)
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "- **Prefix:** ${PREFIX}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Stage:** ${STAGE}" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** ${API_URL}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Image:** ${PREFIX}-app:${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
