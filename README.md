@@ -321,6 +321,29 @@ ruff check src/ tests/ --fix && ruff format src/ tests/
 
 ---
 
+## Infrastructure
+
+AWS CDK (TypeScript) provisions all cloud resources with branch-based isolation — every feature branch gets its own fully independent stack in the same AWS account.
+
+| Component | Dev | Prod |
+|---|---|---|
+| Compute | 4 × Fargate Spot (0.25 vCPU) | 4 × Fargate (0.5 vCPU) |
+| Database | RDS PostgreSQL `db.t3.micro` | RDS PostgreSQL `db.t3.small` + Multi-AZ |
+| Cache | ElastiCache Redis `cache.t3.micro` | ElastiCache Redis `cache.t3.small` |
+| Networking | Public subnets, no NAT | Private subnets + NAT Gateway |
+
+```bash
+# Deploy (prefix auto-detected from branch: main → wo, feature/wo-42-* → wo-42)
+cd infrastructure && STAGE=dev ./scripts/deploy.sh
+
+# Destroy
+STAGE=dev ./scripts/destroy.sh
+```
+
+See [infrastructure/README.md](infrastructure/README.md) for full details.
+
+---
+
 ## CI/CD Pipeline
 
 Every push triggers a GitHub Actions pipeline with three stages:
