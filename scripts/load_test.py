@@ -88,12 +88,22 @@ async def main():
             print(f"{color}{status:20}\033[0m: {count}")
             
         if durations:
+            sorted_d = sorted(durations)
+            n = len(sorted_d)
+
+            def percentile(pct: float) -> float:
+                idx = min(int(pct / 100 * n), n - 1)
+                return sorted_d[idx]
+
             print("-" * 40)
-            print(f"Latency P50:    {statistics.median(durations):.3f}s")
-            if len(durations) >= 2:
-                print(f"Latency P95:    {statistics.quantiles(durations, n=20)[18]:.3f}s")
-                print(f"Latency P99:    {statistics.quantiles(durations, n=100)[98]:.3f}s")
+            print(f"Latency P50:    {percentile(50):.3f}s  (median)")
+            print(f"Latency P90:    {percentile(90):.3f}s  (early slowdowns)")
+            print(f"Latency P95:    {percentile(95):.3f}s  (SLA baseline)")
+            print(f"Latency P99:    {percentile(99):.3f}s  (tail latency)")
+            print(f"Latency P99.9:  {percentile(99.9):.3f}s  (ultra reliability)")
             print(f"Avg Duration:   {sum(durations)/len(durations):.3f}s")
+            print(f"Min Duration:   {min(durations):.3f}s")
+            print(f"Max Duration:   {max(durations):.3f}s")
         print("="*40)
 
 if __name__ == "__main__":
